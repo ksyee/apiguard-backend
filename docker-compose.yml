@@ -1,0 +1,30 @@
+services:
+  db:
+    image: postgres:18
+    container_name: apiguard-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: apiguard
+      POSTGRES_USER: apiguard
+      POSTGRES_PASSWORD: agpass0909!
+    volumes:
+      - ./docker/db/data:/var/lib/postgresql/data # 컨테이너를 지워도 해당 경로에 데이터 유지
+    networks:
+      - apiguard-network
+
+  # Redis: 알림 중복 방지 및 통계 캐싱용
+  redis:
+    image: redis:7
+    container_name: apiguard-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - apiguard-network
+
+networks:
+  apiguard-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

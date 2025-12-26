@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/apiguard
+    username: apiguard
+    password: agpass0909!
+    driver-class-name: org.postgresql.Driver
+  data:
+    redis:
+      host: localhost # Redis 서버 호스트
+      port: 6379 # Redis 서버 포트
