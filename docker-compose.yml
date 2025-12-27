@@ -9,7 +9,7 @@ services:
       POSTGRES_USER: apiguard
       POSTGRES_PASSWORD: agpass0909!
     volumes:
-      - ./docker/db/data:/var/lib/postgresql/data # 컨테이너를 지워도 해당 경로에 데이터 유지
+      - ./docker/db/data:/var/lib/postgresql # 컨테이너를 지워도 해당 경로에 데이터 유지
     networks:
       - apiguard-network
 
