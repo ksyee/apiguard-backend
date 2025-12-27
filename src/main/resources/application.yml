@@ -1,4 +1,7 @@
 spring:
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
   datasource:
     url: jdbc:postgresql://localhost:5432/apiguard
     username: apiguard
