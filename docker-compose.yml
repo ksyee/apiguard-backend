@@ -3,11 +3,11 @@ services:
     image: postgres:18
     container_name: apiguard-db
     ports:
-      - "5432:5432"
+      - "5433:5432"
     environment:
       POSTGRES_DB: apiguard
       POSTGRES_USER: apiguard
-      POSTGRES_PASSWORD: agpass0909!
+      POSTGRES_PASSWORD: apiguard1234
     volumes:
       - ./docker/db/data:/var/lib/postgresql # 컨테이너를 지워도 해당 경로에 데이터 유지
     networks:
