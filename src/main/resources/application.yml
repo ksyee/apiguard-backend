@@ -1,9 +1,8 @@
 spring:
   flyway:
-    enabled: true
     baseline-on-migrate: true
   datasource:
-    url: jdbc:postgresql://localhost:5433/apiguard
+    url: jdbc:postgresql://localhost:5432/apiguard
     username: apiguard
     password: apiguard1234
     driver-class-name: org.postgresql.Driver

@@ -3,7 +3,7 @@ services:
     image: postgres:18
     container_name: apiguard-db
     ports:
-      - "5433:5432"
+      - "5432:5432"
     environment:
       POSTGRES_DB: apiguard
       POSTGRES_USER: apiguard
