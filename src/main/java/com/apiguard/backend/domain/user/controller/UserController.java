@@ -1,7 +1,10 @@
 package com.apiguard.backend.domain.user.controller;
 
+import com.apiguard.backend.domain.user.dto.SignUpRequest;
+import com.apiguard.backend.domain.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -9,11 +12,19 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/users") // 공통 경로
 @RequiredArgsConstructor // Lombok 사용 시 생성자 자동 주입
 public class UserController {
-
-//    private final UserService userService;
+    
+    private final UserService userService;
     
     @GetMapping("/getuser")
     public String getUser() {
         return "User details";
+    }
+    
+    @PostMapping("/signup")
+    public String signUp(SignUpRequest signUpRequest) {
+        
+        userService.signUp(signUpRequest);
+        
+        return "User signed up";
     }
 }

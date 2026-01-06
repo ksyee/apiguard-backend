@@ -10,3 +10,7 @@ spring:
     redis:
       host: localhost # Redis 서버 호스트
       port: 6379 # Redis 서버 포트
+jwt:
+  secret: ${JWT_SECRET:apiguard-backend-temp-secret-key-for-local-development-02037409}
+  access-expiration: 3600000
+  refresh-expiration: 1209600000

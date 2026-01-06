@@ -9,6 +9,21 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     
+    // 정적 리소스(favicon 등)가 없을 때 발생하는 예외 처리 (로그 레벨 낮춤)
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ApiResponse<Void> handleNoResourceFoundException(
+        org.springframework.web.servlet.resource.NoResourceFoundException e) {
+        return ApiResponse.error("Resource not found: " + e.getResourcePath());
+    }
+    
+    @ExceptionHandler(DuplicateEmailException.class)
+    public ApiResponse<Void> handleDuplicateEmailException(DuplicateEmailException e) {
+        // 로그
+        log.warn("중복 이메일 에러");
+        
+        return ApiResponse.error(e.getMessage());
+    }
+    
     // 모든 예외를 처리하는 메서드
     @ExceptionHandler(Exception.class)
     public ApiResponse<Void> handleException(Exception e) {
