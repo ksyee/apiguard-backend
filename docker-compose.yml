@@ -3,7 +3,7 @@ services:
     image: postgres:18
     container_name: apiguard-db
     ports:
-      - "5432:5432"
+      - '15432:5432'
     environment:
       POSTGRES_DB: apiguard
       POSTGRES_USER: apiguard
@@ -15,10 +15,10 @@ services:
 
   # Redis: 알림 중복 방지 및 통계 캐싱용
   redis:
-    image: redis:7
+    image: redis:8
     container_name: apiguard-redis
     ports:
-      - "6379:6379"
+      - '6379:6379'
     networks:
       - apiguard-network
 
