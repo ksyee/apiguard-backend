@@ -1,0 +1,3 @@
+### health check
+GET https://localhost:8080/health
+###

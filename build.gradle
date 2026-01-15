@@ -10,7 +10,7 @@ description = 'backend'
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(25)
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 
@@ -23,15 +23,28 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
-    implementation 'org.projectlombok:lombok'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
     implementation 'org.springframework.boot:spring-boot-starter-session-data-redis'
     testImplementation 'org.springframework.security:spring-security-test'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
     runtimeOnly 'org.postgresql:postgresql'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    // Flyway (버전 관리를 위한 코어 라이브러리)
+    implementation 'org.flywaydb:flyway-core:11.1.0'
+    // Flyway PostgreSQL 드라이버
+    implementation 'org.flywaydb:flyway-database-postgresql:11.1.0'
+    // JWT
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
 }
 
 tasks.named('test', Test) {
     useJUnitPlatform()
+}
+
+test {
+    jvmArgs("-javaagent:${configurations.testRuntimeClasspath.find { it.name.contains("byte-buddy-agent") }.absolutePath}")
 }
