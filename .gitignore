@@ -39,4 +39,6 @@ out/
 
 ### Docker ###
 docker
-docker/
+
+### 이미지 캡처 ###
+.gemini-clipboard
