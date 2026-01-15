@@ -53,5 +53,15 @@ public class User {
     @Column(nullable = false)
     @LastModifiedDate
     private LocalDateTime updatedAt;
+    
+    // 닉네임 변경
+    public void updateNickname(String nickname) {
+        this.nickname = nickname;
+    }
+    
+    // 비밀번호 변경
+    public void updatePassword(String encodedPassword) {
+        this.password = password;
+    }
 }
 
