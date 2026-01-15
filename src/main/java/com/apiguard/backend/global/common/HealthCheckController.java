@@ -18,3 +18,4 @@ public class HealthCheckController {
         throw new RuntimeException("서버가 터져버렸습니다!!!");
     }
 }
+
