@@ -2,7 +2,7 @@ package com.apiguard.backend.domain.auth.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.when;
+import static org.mockito.BDDMockito.given;
 
 import com.apiguard.backend.domain.auth.dto.LoginRequest;
 import com.apiguard.backend.domain.auth.dto.LoginResponse;
@@ -21,7 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
-public class AuthServiceTest {
+class AuthServiceTest {
     
     @Mock
     private UserRepository userRepository;
@@ -37,7 +37,7 @@ public class AuthServiceTest {
     
     @Test
     @DisplayName("로그인 성공")
-    public void testLogin() {
+    void testLogin() {
         // given
         String email = "test@example.com";
         String password = "password";
@@ -50,11 +50,11 @@ public class AuthServiceTest {
             .build();
         
         // Mock 동작 정의
-        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches(password, encodedPassword)).thenReturn(true);
-        when(jwtTokenProvider.createAccessToken(email, user.getRole().name())).thenReturn(
+        given(userRepository.findByEmail(email)).willReturn(Optional.of(user));
+        given(passwordEncoder.matches(password, encodedPassword)).willReturn(true);
+        given(jwtTokenProvider.createAccessToken(email, user.getRole().name())).willReturn(
             "accessToken");
-        when(jwtTokenProvider.createRefreshToken(email)).thenReturn("refreshToken");
+        given(jwtTokenProvider.createRefreshToken(email)).willReturn("refreshToken");
         
         // when
         LoginRequest request = new LoginRequest(email, password);
@@ -67,9 +67,9 @@ public class AuthServiceTest {
     
     @Test
     @DisplayName("로그인 실패")
-    public void login_WithNonExistentEmail_ThrowException() {
-        // given
-        when(userRepository.findByEmail("wrong@email.com")).thenReturn(Optional.empty());
+    void login_WithNonExistentEmail_ThrowException() {
+        // Given
+        given(userRepository.findByEmail("wrong@email.com")).willReturn(Optional.empty());
         
         // when & then
         LoginRequest request = new LoginRequest("wrong@email.com", "password");
@@ -79,7 +79,7 @@ public class AuthServiceTest {
     
     @Test
     @DisplayName("로그인 실패 - 비밀번호 불일치")
-    public void login_WithWrongPassword_ThrowException() {
+    void login_WithWrongPassword_ThrowException() {
         // given
         String email = "test@example.com";
         String wrongPassword = "wrongPassword";
@@ -92,8 +92,8 @@ public class AuthServiceTest {
             .build();
         
         // Mock 동작 정의
-        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches(wrongPassword, correctEncodedPassword)).thenReturn(false);
+        given(userRepository.findByEmail(email)).willReturn(Optional.of(user));
+        given(passwordEncoder.matches(wrongPassword, correctEncodedPassword)).willReturn(false);
         
         // when & then
         LoginRequest request = new LoginRequest(email, wrongPassword);
