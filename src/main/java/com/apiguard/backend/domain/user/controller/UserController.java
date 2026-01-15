@@ -34,9 +34,7 @@ public class UserController {
     
     @PostMapping("/signup")
     public ApiResponse<Long> signUp(@RequestBody @Valid SignUpRequest request) {
-        
         Long userId = userService.signUp(request);
-        
         return ApiResponse.ok(userId);
     }
     

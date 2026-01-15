@@ -42,3 +42,6 @@ docker
 
 ### 이미지 캡처 ###
 .gemini-clipboard
+
+### Environment ###
+.env
