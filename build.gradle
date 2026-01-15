@@ -35,6 +35,8 @@ dependencies {
     implementation 'org.flywaydb:flyway-core:11.1.0'
     // Flyway PostgreSQL 드라이버
     implementation 'org.flywaydb:flyway-database-postgresql:11.1.0'
+    // OpenAPI (Swagger)
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.0'
     // JWT
     implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
