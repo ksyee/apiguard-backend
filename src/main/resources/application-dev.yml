@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/apiguard
+    username: apiguard
+    password: apiguard1234
+  data:
+    redis:
+      host: localhost
+      port: 6379
+jwt:
+  secret: apiguard-backend-temp-secret-key-for-local-development-02037409
+
+security:
+  whitelist:
+    - /auth/**  # 로그인, 토큰 재발급 등
+    - /users/signup  # 회원가입
+    - /error
+
+    # 개발 환경에서만
+    - /swagger-ui/**
+    - /v3/api-docs/**
