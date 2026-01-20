@@ -23,11 +23,18 @@ public class UserService {
     
     // 사용자 정보 조회(ID 기준)
     public User getUserDetail() {
+        // 1. 보안 컨텍스트에서 인증 객체 꺼내기
         var authentication = SecurityContextHolder.getContext().getAuthentication();
+        
+        // 2. 방어 로직 (실제로는 SecurityConfig에서 먼저 막히지만, 안전장치로 둠)
         if (authentication == null || !authentication.isAuthenticated()) {
             throw new RuntimeException("인증된 사용자 정보가 없습니다.");
         }
+        
+        // 3. 인증된 사용자의 이름(Email) 꺼내기
         String email = authentication.getName();
+        
+        // 4. DB 조회
         return userRepository.findByEmail(email)
             .orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다."));
     }

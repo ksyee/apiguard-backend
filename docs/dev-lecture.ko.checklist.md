@@ -3,7 +3,7 @@
 이 체크리스트는 개발자가 직접 구현할 때 순서대로 따라가며 검증할 수 있도록 구성했습니다.
 
 ## 1. `/users/me` 정리
-- [ ] `UserController`에서 `/users/me`의 이메일 파라미터 제거
+- [x] `UserController`에서 `/users/me`의 이메일 파라미터 제거
 - [ ] 인증된 사용자 정보만으로 조회하도록 `UserService.getUserDetail()` 연동
 - [ ] 토큰 없이 호출 시 401 또는 403 확인
 
