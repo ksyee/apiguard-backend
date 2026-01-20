@@ -1,8 +1,21 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/apiguard
+    url: jdbc:postgresql://localhost:15432/apiguard
+    driver-class-name: org.postgresql.Driver
     username: apiguard
     password: apiguard1234
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+        show_sql: true
+    defer-datasource-initialization: false # Flyway가 먼저 실행되도록 지연 설정 해제
+  flyway:
+    enabled: true
+    baseline-on-migrate: true # 기존 데이터가 있어도 마이그레이션 시작
   data:
     redis:
       host: localhost
@@ -14,8 +27,10 @@ security:
   whitelist:
     - /auth/**  # 로그인, 토큰 재발급 등
     - /users/signup  # 회원가입
+    - /health
     - /error
 
     # 개발 환경에서만
     - /swagger-ui/**
     - /v3/api-docs/**
+    - /h2-console/**

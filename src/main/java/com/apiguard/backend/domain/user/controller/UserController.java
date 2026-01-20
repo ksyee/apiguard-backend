@@ -8,7 +8,6 @@ import com.apiguard.backend.domain.user.repository.UserRepository;
 import com.apiguard.backend.domain.user.service.UserService;
 import com.apiguard.backend.global.common.ApiResponse;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Email;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -26,7 +25,7 @@ public class UserController {
     private final UserService userService;
     
     @GetMapping("/me")
-    public ApiResponse<UserResponse> getUser(@Valid @Email String email) {
+    public ApiResponse<UserResponse> getUser() {
         User user = userService.getUserDetail();
         
         return ApiResponse.ok(UserResponse.from(user));
