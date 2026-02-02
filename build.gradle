@@ -46,8 +46,11 @@ dependencies {
 
 tasks.named('test', Test) {
     useJUnitPlatform()
-}
-
-test {
-    jvmArgs("-javaagent:${configurations.testRuntimeClasspath.find { it.name.contains("byte-buddy-agent") }.absolutePath}")
+    jvmArgs(
+        "-javaagent:${configurations.testRuntimeClasspath.find { it.name.contains("byte-buddy-agent") }}",
+        "-Dcom.sun.management.jmxremote=false",
+        "-Dcom.sun.management.jmxremote.port=0",
+        "-Dcom.sun.management.jmxremote.authenticate=false",
+        "-Dcom.sun.management.jmxremote.ssl=false"
+    )
 }

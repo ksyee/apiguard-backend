@@ -8,6 +8,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import com.apiguard.backend.domain.user.dto.SignUpRequest;
+import com.apiguard.backend.domain.user.entity.Role;
 import com.apiguard.backend.domain.user.entity.User;
 import com.apiguard.backend.domain.user.repository.UserRepository;
 import com.apiguard.backend.global.exception.DuplicateEmailException;
@@ -46,12 +47,24 @@ class UserServiceTest {
     void signUp() {
         // Given
         SignUpRequest request = new SignUpRequest("test@email.com", "test1234", "nickname");
-        
+        given(passwordEncoder.encode(request.password())).willReturn("encodedPassword");
+
+        User savedUser = User.builder()
+                .id(1L)
+                .email(request.email())
+                .password("encodedPassword")
+                .nickname(request.nickname())
+                .role(Role.USER)
+                .build();
+
+        given(userRepository.save(any(User.class))).willReturn(savedUser);
+
         // When
-        userService.signUp(request);
-        
+        Long userId = userService.signUp(request);
+
         // Then
-        verify(userRepository).save(any());
+        assertThat(userId).isEqualTo(1L);
+        verify(userRepository).save(any(User.class));
     }
     
     @Test

@@ -1,5 +1,6 @@
 package com.apiguard.backend.domain.user.controller;
 
+import com.apiguard.backend.domain.user.dto.ChangePasswordRequest;
 import com.apiguard.backend.domain.user.dto.SignUpRequest;
 import com.apiguard.backend.domain.user.dto.UpdateUserRequest;
 import com.apiguard.backend.domain.user.dto.UserResponse;
@@ -40,6 +41,12 @@ public class UserController {
     @PatchMapping("/me")
     public ApiResponse<Void> updateMe(@RequestBody @Valid UpdateUserRequest request) {
         userService.updateUser(request);
+        return ApiResponse.ok();
+    }
+    
+    @PatchMapping("/me/password")
+    public ApiResponse<Void> changePassword(@RequestBody @Valid ChangePasswordRequest request) {
+        userService.changePassword(request);
         return ApiResponse.ok();
     }
 }
