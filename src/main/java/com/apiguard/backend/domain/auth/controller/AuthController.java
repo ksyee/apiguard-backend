@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.apiguard.backend.domain.auth.dto.LoginRequest;
 import com.apiguard.backend.domain.auth.dto.LoginResponse;
+import com.apiguard.backend.domain.auth.dto.LogoutRequest;
+import com.apiguard.backend.domain.auth.dto.RefreshRequest;
 import com.apiguard.backend.domain.auth.service.AuthService;
 import com.apiguard.backend.global.common.ApiResponse;
 
@@ -25,4 +27,14 @@ public class AuthController {
     return ApiResponse.ok(authService.login(request));
   }
 
+  @PostMapping("/refresh")
+  public ApiResponse<LoginResponse> refresh(@RequestBody @Valid RefreshRequest request) {
+    return ApiResponse.ok(authService.refresh(request));
+  }
+
+  @PostMapping("/logout")
+  public ApiResponse<Void> logout(@RequestBody @Valid LogoutRequest request) {
+    authService.logout(request);
+    return ApiResponse.ok();
+  }
 }

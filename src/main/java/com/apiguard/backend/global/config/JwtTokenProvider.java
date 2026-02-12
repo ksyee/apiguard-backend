@@ -124,6 +124,16 @@ public class JwtTokenProvider {
         return false;
     }
     
+    // 토큰에서 이메일(subject) 추출
+    public String getEmailFromToken(String token) {
+        return getClaims(token).getSubject();
+    }
+
+    // Redis TTL 설정용 Refresh Token 만료 시간 반환 (밀리초)
+    public long getRefreshExpiration() {
+        return refreshExpiration;
+    }
+
     private Claims getClaims(String token) {
         return Jwts.parser()
             .verifyWith(key)
