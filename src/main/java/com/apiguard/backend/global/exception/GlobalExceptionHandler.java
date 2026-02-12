@@ -94,8 +94,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ApiResponse<Void> handleException(Exception e) {
         log.error("처리되지 않은 예외 발생: ", e);
-        
-        // 우리가 만든 ApiResponse 규격으로 에러 메시지를 담아서 리턴
-        return ApiResponse.error(e.getMessage());
+
+        return ApiResponse.error("서버 내부 오류가 발생했습니다.");
     }
 }
