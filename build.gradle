@@ -31,11 +31,6 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
     runtimeOnly 'org.postgresql:postgresql'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-    implementation 'org.springframework.boot:spring-boot-starter-flyway'
-    // Flyway (버전 관리를 위한 코어 라이브러리)
-    implementation 'org.flywaydb:flyway-core'
-    // Flyway PostgreSQL 드라이버
-    implementation 'org.flywaydb:flyway-database-postgresql'
     // OpenAPI (Swagger)
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5'
     // JWT
