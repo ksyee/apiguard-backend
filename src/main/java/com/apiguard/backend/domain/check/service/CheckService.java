@@ -29,4 +29,11 @@ public class CheckService {
 
         return CheckResultResponse.from(saved);
     }
+
+    @Transactional
+    public void performCheck(Endpoint endpoint) {
+        CheckResult result = httpCheckerService.check(endpoint);
+        checkResultRepository.save(result);
+        endpoint.updateLastCheckedAt();
+    }
 }

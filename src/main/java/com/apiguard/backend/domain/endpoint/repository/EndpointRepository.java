@@ -9,4 +9,5 @@ import java.util.Optional;
 public interface EndpointRepository extends JpaRepository<Endpoint, Long> {
     List<Endpoint> findByProjectIdAndDeletedFalse(Long projectId);
     Optional<Endpoint> findByIdAndDeletedFalse(Long id);
+    List<Endpoint> findByIsActiveTrueAndDeletedFalse();
 }
