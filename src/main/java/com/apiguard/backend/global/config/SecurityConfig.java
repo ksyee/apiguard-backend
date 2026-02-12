@@ -6,6 +6,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -15,8 +17,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
-
+    
     private final JwtTokenProvider jwtTokenProvider;
+    private final SecurityProperties securityProperties;
     
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -32,10 +35,17 @@ public class SecurityConfig {
             .httpBasic(AbstractHttpConfigurer::disable)
             // Form 로그인 비활성화
             .formLogin(AbstractHttpConfigurer::disable)
-            // 모든 요청에 대한 접근 허용
-            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+            // H2 Console 사용을 위한 Frame Options 설정 해제
+            .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable))
+            // Stateless 세션 설정 (JWT 사용)
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            // YAML에서 가져온 whitelist URL들은 모두 허용
+            .authorizeHttpRequests(auth -> auth.requestMatchers(
+                    securityProperties.getWhitelist().toArray(new String[0])).permitAll().anyRequest()
+                .authenticated())
             // JWT 인증 필터 추가
-            .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider),
+                UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 }
