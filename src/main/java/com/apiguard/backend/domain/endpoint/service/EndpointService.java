@@ -9,6 +9,7 @@ import com.apiguard.backend.domain.project.entity.Project;
 import com.apiguard.backend.domain.project.service.ProjectService;
 import com.apiguard.backend.global.exception.EndpointNotFoundException;
 import com.apiguard.backend.global.exception.ForbiddenException;
+import com.apiguard.backend.global.exception.ProjectNotFoundException;
 import com.apiguard.backend.domain.user.entity.User;
 import com.apiguard.backend.domain.user.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -87,6 +88,10 @@ public class EndpointService {
         User user = userService.getUserDetail();
         Endpoint endpoint = endpointRepository.findByIdAndDeletedFalse(endpointId)
             .orElseThrow(() -> new EndpointNotFoundException("엔드포인트를 찾을 수 없습니다."));
+
+        if (endpoint.getProject().isDeleted()) {
+            throw new ProjectNotFoundException("프로젝트를 찾을 수 없습니다.");
+        }
 
         if (!endpoint.getProject().getUser().getId().equals(user.getId())) {
             throw new ForbiddenException("해당 엔드포인트에 대한 권한이 없습니다.");
