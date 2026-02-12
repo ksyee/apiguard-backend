@@ -26,7 +26,6 @@ security:
     - /health
     - /error
 
-    # 개발 환경에서만
+    # 개발 환경
     - /swagger-ui/**
     - /v3/api-docs/**
-    - /h2-console/**
