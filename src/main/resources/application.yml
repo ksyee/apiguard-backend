@@ -1,8 +1,6 @@
 spring:
   profiles:
     active: dev
-  flyway:
-    baseline-on-migrate: true
 jwt:
   secret: ${JWT_SECRET:apiguard-backend-temp-secret-key-for-local-development-02037409}
   access-expiration: 3600000
