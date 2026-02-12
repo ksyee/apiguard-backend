@@ -52,7 +52,28 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ApiResponse<Void> handleUnauthorizedException(UnauthorizedException e) {
         log.warn("인증 실패: {}", e.getMessage());
-        
+
+        return ApiResponse.error(e.getMessage());
+    }
+
+    @ExceptionHandler(ProjectNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ApiResponse<Void> handleProjectNotFoundException(ProjectNotFoundException e) {
+        log.warn("프로젝트 조회 실패: {}", e.getMessage());
+        return ApiResponse.error(e.getMessage());
+    }
+
+    @ExceptionHandler(EndpointNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ApiResponse<Void> handleEndpointNotFoundException(EndpointNotFoundException e) {
+        log.warn("엔드포인트 조회 실패: {}", e.getMessage());
+        return ApiResponse.error(e.getMessage());
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ApiResponse<Void> handleForbiddenException(ForbiddenException e) {
+        log.warn("권한 없음: {}", e.getMessage());
         return ApiResponse.error(e.getMessage());
     }
     
