@@ -3,6 +3,7 @@ package com.apiguard.backend.global.exception;
 import com.apiguard.backend.global.common.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -55,6 +56,18 @@ public class GlobalExceptionHandler {
         return ApiResponse.error(e.getMessage());
     }
     
+    // @Valid 검증 실패 시 처리
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse<Void> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
+        String message = e.getBindingResult().getFieldErrors().stream()
+            .map(error -> error.getField() + ": " + error.getDefaultMessage())
+            .findFirst()
+            .orElse("잘못된 요청입니다.");
+        log.warn("Validation 실패: {}", message);
+        return ApiResponse.error(message);
+    }
+
     // 모든 예외를 처리하는 메서드
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)

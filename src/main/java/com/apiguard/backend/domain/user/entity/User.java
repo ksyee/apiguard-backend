@@ -28,40 +28,51 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
 public class User {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
+
     @Column(nullable = false, unique = true)
     private String email;
-    
+
     @Column(nullable = false)
     private String password;
-    
+
     @Column(nullable = false)
     private String nickname;
-    
+
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private Role role;
-    
+
     @Column(nullable = false)
     @CreatedDate
     private LocalDateTime createdAt;
-    
+
     @Column(nullable = false)
     @LastModifiedDate
     private LocalDateTime updatedAt;
-    
+
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean deleted = false;
+
+    private LocalDateTime deletedAt;
+
     // 닉네임 변경
     public void updateNickname(String nickname) {
         this.nickname = nickname;
     }
-    
+
     // 비밀번호 변경
     public void changePassword(String encodedPassword) {
         this.password = encodedPassword;
     }
-}
 
+    // Soft Delete
+    public void softDelete() {
+        this.deleted = true;
+        this.deletedAt = LocalDateTime.now();
+    }
+}
