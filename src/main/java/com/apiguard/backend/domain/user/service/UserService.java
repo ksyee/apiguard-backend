@@ -33,7 +33,7 @@ public class UserService {
 
         // 1. null 체크
         if (authentication == null) {
-            throw new RuntimeException("인증된 사용자 정보가 없습니다.");
+            throw new UnauthorizedException("로그인이 필요합니다.");
         }
 
         // 2. 익명 사용자 체크
@@ -43,7 +43,7 @@ public class UserService {
 
         // 3. 인증 여부 체크
         if (!authentication.isAuthenticated()) {
-            throw new RuntimeException("인증되지 않은 사용자입니다.");
+            throw new UnauthorizedException("인증되지 않은 사용자입니다.");
         }
 
         // 인증된 사용자의 이름(Email) 꺼내기

@@ -13,6 +13,8 @@ import com.apiguard.backend.domain.user.entity.Role;
 import com.apiguard.backend.domain.user.entity.User;
 import com.apiguard.backend.domain.user.repository.UserRepository;
 import com.apiguard.backend.global.exception.DuplicateEmailException;
+import com.apiguard.backend.global.exception.UnauthorizedException;
+import com.apiguard.backend.global.exception.UserNotFoundException;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -115,7 +117,7 @@ class UserServiceTest {
 
         // when & then
         assertThatThrownBy(userService::getUserDetail).isInstanceOf(
-            RuntimeException.class).hasMessage("인증된 사용자 정보가 없습니다.");
+            UnauthorizedException.class).hasMessage("로그인이 필요합니다.");
     }
 
     @Test
@@ -136,7 +138,7 @@ class UserServiceTest {
 
         // when & then
         assertThatThrownBy(userService::getUserDetail).isInstanceOf(
-            RuntimeException.class).hasMessage("사용자를 찾을 수 없습니다.");
+            UserNotFoundException.class).hasMessage("사용자를 찾을 수 없습니다.");
     }
 
     @Test
