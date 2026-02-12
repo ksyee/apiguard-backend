@@ -7,15 +7,11 @@ spring:
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     properties:
       hibernate:
         format_sql: true
         show_sql: true
-    defer-datasource-initialization: false # Flyway가 먼저 실행되도록 지연 설정 해제
-  flyway:
-    enabled: true
-    baseline-on-migrate: true # 기존 데이터가 있어도 마이그레이션 시작
   data:
     redis:
       host: localhost
