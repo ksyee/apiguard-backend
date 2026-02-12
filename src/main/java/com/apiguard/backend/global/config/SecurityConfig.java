@@ -6,7 +6,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -35,8 +34,6 @@ public class SecurityConfig {
             .httpBasic(AbstractHttpConfigurer::disable)
             // Form 로그인 비활성화
             .formLogin(AbstractHttpConfigurer::disable)
-            // H2 Console 사용을 위한 Frame Options 설정 해제
-            .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable))
             // Stateless 세션 설정 (JWT 사용)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             // YAML에서 가져온 whitelist URL들은 모두 허용
