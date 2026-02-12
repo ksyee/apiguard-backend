@@ -17,6 +17,7 @@ import com.apiguard.backend.domain.user.entity.User;
 import com.apiguard.backend.domain.user.service.UserService;
 import com.apiguard.backend.global.exception.EndpointNotFoundException;
 import com.apiguard.backend.global.exception.ForbiddenException;
+import com.apiguard.backend.global.exception.ProjectNotFoundException;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
@@ -167,5 +168,23 @@ class EndpointServiceTest {
 
         // then
         assertThat(response.isActive()).isFalse();
+    }
+
+    @Test
+    @DisplayName("삭제된 프로젝트의 엔드포인트 접근 시 404 예외")
+    void getEndpoint_deletedProject_notFound() {
+        // given
+        User user = createUser(1L);
+        Project deletedProject = createProject(1L, user);
+        deletedProject.softDelete();
+        Endpoint endpoint = createEndpoint(1L, deletedProject);
+
+        given(userService.getUserDetail()).willReturn(user);
+        given(endpointRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(endpoint));
+
+        // when & then
+        assertThatThrownBy(() -> endpointService.getEndpoint(1L))
+            .isInstanceOf(ProjectNotFoundException.class)
+            .hasMessage("프로젝트를 찾을 수 없습니다.");
     }
 }
