@@ -1,5 +1,6 @@
 package com.apiguard.backend.domain.check.service;
 
+import com.apiguard.backend.domain.alert.service.AlertService;
 import com.apiguard.backend.domain.endpoint.entity.Endpoint;
 import com.apiguard.backend.domain.endpoint.entity.HttpMethod;
 import com.apiguard.backend.domain.endpoint.repository.EndpointRepository;
@@ -33,6 +34,9 @@ class HealthCheckSchedulerTest {
     @Mock
     private CheckService checkService;
 
+    @Mock
+    private AlertService alertService;
+
     private HealthCheckScheduler healthCheckScheduler;
 
     private final Executor directExecutor = Runnable::run;
@@ -40,7 +44,7 @@ class HealthCheckSchedulerTest {
     @BeforeEach
     void setUp() {
         healthCheckScheduler = new HealthCheckScheduler(
-            endpointRepository, checkService, directExecutor);
+            endpointRepository, checkService, alertService, directExecutor);
     }
 
     private User createUser(Long id) {

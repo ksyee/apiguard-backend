@@ -16,6 +16,15 @@ spring:
     redis:
       host: localhost
       port: 6379
+  mail:
+    host: localhost
+    port: 1025
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
 jwt:
   secret: apiguard-backend-temp-secret-key-for-local-development-02037409
 
