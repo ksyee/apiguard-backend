@@ -65,6 +65,13 @@ public class GlobalExceptionHandler {
         return buildProblemDetail(HttpStatus.NOT_FOUND, "ENDPOINT_NOT_FOUND", e.getMessage());
     }
 
+    @ExceptionHandler(AlertNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ProblemDetail handleAlertNotFoundException(AlertNotFoundException e) {
+        log.warn("알림 설정 조회 실패: {}", e.getMessage());
+        return buildProblemDetail(HttpStatus.NOT_FOUND, "ALERT_NOT_FOUND", e.getMessage());
+    }
+
     @ExceptionHandler(ForbiddenException.class)
     @ResponseStatus(HttpStatus.FORBIDDEN)
     public ProblemDetail handleForbiddenException(ForbiddenException e) {
