@@ -1,5 +1,6 @@
 package com.apiguard.backend.domain.check.service;
 
+import com.apiguard.backend.domain.alert.service.AlertService;
 import com.apiguard.backend.domain.endpoint.entity.Endpoint;
 import com.apiguard.backend.domain.endpoint.repository.EndpointRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,7 @@ public class HealthCheckScheduler {
 
     private final EndpointRepository endpointRepository;
     private final CheckService checkService;
+    private final AlertService alertService;
     private final Executor healthCheckExecutor;
 
     @Scheduled(fixedDelay = 60_000)
@@ -56,6 +58,7 @@ public class HealthCheckScheduler {
     private void executeCheck(Endpoint endpoint) {
         try {
             checkService.performCheck(endpoint);
+            alertService.checkAndAlert(endpoint);
         } catch (Exception e) {
             log.error("헬스체크 실패: endpointId={}, url={}", endpoint.getId(), endpoint.getUrl(), e);
         }
