@@ -7,11 +7,13 @@ import com.apiguard.backend.domain.user.dto.UpdateUserRequest;
 import com.apiguard.backend.domain.user.entity.Role;
 import com.apiguard.backend.domain.user.entity.User;
 import com.apiguard.backend.domain.user.repository.UserRepository;
+import com.apiguard.backend.domain.workspace.service.WorkspaceService;
 import com.apiguard.backend.global.exception.DuplicateEmailException;
 import com.apiguard.backend.global.exception.InvalidCredentialsException;
 import com.apiguard.backend.global.exception.UnauthorizedException;
 import com.apiguard.backend.global.exception.UserNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,6 +28,9 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
     private final AuthService authService;
+
+    @Autowired(required = false)
+    private WorkspaceService workspaceService;
 
     // 사용자 정보 조회(ID 기준)
     public User getUserDetail() {
@@ -72,6 +77,11 @@ public class UserService {
             .build();
 
         User savedUser = userRepository.save(user);
+
+        if (workspaceService != null) {
+            workspaceService.createPersonalWorkspace(savedUser);
+        }
+
         return savedUser.getId();
     }
 

@@ -1,6 +1,7 @@
 package com.apiguard.backend.domain.project.entity;
 
 import com.apiguard.backend.domain.user.entity.User;
+import com.apiguard.backend.domain.workspace.entity.Workspace;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -23,7 +24,11 @@ public class Project {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "workspace_id")
+    private Workspace workspace;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
     private User user;
 
     @Column(nullable = false, length = 100)

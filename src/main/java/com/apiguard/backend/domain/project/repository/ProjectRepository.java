@@ -9,4 +9,6 @@ import java.util.Optional;
 public interface ProjectRepository extends JpaRepository<Project, Long> {
     List<Project> findByUserIdAndDeletedFalse(Long userId);
     Optional<Project> findByIdAndDeletedFalse(Long id);
+    List<Project> findByWorkspaceIdAndDeletedFalse(Long workspaceId);
+    long countByWorkspaceIdAndDeletedFalse(Long workspaceId);
 }
