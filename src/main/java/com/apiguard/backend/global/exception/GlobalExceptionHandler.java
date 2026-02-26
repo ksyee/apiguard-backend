@@ -67,6 +67,12 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.NOT_FOUND, e.getMessage());
     }
 
+    @ExceptionHandler(PlanLimitExceededException.class)
+    public ResponseEntity<ApiResponse<Void>> handlePlanLimitExceededException(PlanLimitExceededException e) {
+        log.warn("플랜 제한 초과: {}", e.getMessage());
+        return error(HttpStatus.PAYMENT_REQUIRED, e.getMessage());
+    }
+
     @ExceptionHandler(ForbiddenException.class)
     public ResponseEntity<ApiResponse<Void>> handleForbiddenException(ForbiddenException e) {
         log.warn("권한 없음: {}", e.getMessage());

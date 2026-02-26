@@ -17,7 +17,9 @@ public class WorkspaceController {
     private final WorkspaceService workspaceService;
 
     @PostMapping
-    public ApiResponse<WorkspaceResponse> createWorkspace(@RequestBody @Valid CreateWorkspaceRequest request) {
+    public ApiResponse<WorkspaceResponse> createWorkspace(
+        @RequestBody @Valid CreateWorkspaceRequest request
+    ) {
         return ApiResponse.ok(workspaceService.createWorkspace(request));
     }
 
@@ -37,34 +39,34 @@ public class WorkspaceController {
         return ApiResponse.ok();
     }
 
-    @GetMapping("/{workspaceId}/members")
-    public ApiResponse<List<WorkspaceMemberResponse>> getMembers(@PathVariable Long workspaceId) {
-        return ApiResponse.ok(workspaceService.getMembers(workspaceId));
-    }
-
-    @PostMapping("/{workspaceId}/members/invite")
+    @PostMapping("/{id}/members")
     public ApiResponse<WorkspaceMemberResponse> inviteMember(
-        @PathVariable Long workspaceId,
+        @PathVariable Long id,
         @RequestBody @Valid InviteMemberRequest request
     ) {
-        return ApiResponse.ok(workspaceService.inviteMember(workspaceId, request));
+        return ApiResponse.ok(workspaceService.inviteMember(id, request));
     }
 
-    @PutMapping("/{workspaceId}/members/{memberId}/role")
+    @GetMapping("/{id}/members")
+    public ApiResponse<List<WorkspaceMemberResponse>> getMembers(@PathVariable Long id) {
+        return ApiResponse.ok(workspaceService.getMembers(id));
+    }
+
+    @PatchMapping("/{id}/members/{userId}/role")
     public ApiResponse<WorkspaceMemberResponse> updateMemberRole(
-        @PathVariable Long workspaceId,
-        @PathVariable Long memberId,
+        @PathVariable Long id,
+        @PathVariable Long userId,
         @RequestBody @Valid UpdateMemberRoleRequest request
     ) {
-        return ApiResponse.ok(workspaceService.updateMemberRole(workspaceId, memberId, request));
+        return ApiResponse.ok(workspaceService.updateMemberRole(id, userId, request));
     }
 
-    @DeleteMapping("/{workspaceId}/members/{memberId}")
+    @DeleteMapping("/{id}/members/{userId}")
     public ApiResponse<Void> removeMember(
-        @PathVariable Long workspaceId,
-        @PathVariable Long memberId
+        @PathVariable Long id,
+        @PathVariable Long userId
     ) {
-        workspaceService.removeMember(workspaceId, memberId);
+        workspaceService.removeMember(id, userId);
         return ApiResponse.ok();
     }
 }
