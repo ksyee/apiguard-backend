@@ -10,6 +10,7 @@ import com.apiguard.backend.domain.check.repository.CheckResultRepository;
 import com.apiguard.backend.domain.endpoint.entity.Endpoint;
 import com.apiguard.backend.domain.endpoint.repository.EndpointRepository;
 import com.apiguard.backend.domain.endpoint.service.EndpointService;
+import com.apiguard.backend.global.exception.EndpointNotFoundException;
 import com.apiguard.backend.domain.project.entity.Project;
 import com.apiguard.backend.domain.project.service.ProjectService;
 import lombok.RequiredArgsConstructor;
@@ -44,7 +45,9 @@ public class CheckService {
     }
 
     @Transactional
-    public void performCheck(Endpoint endpoint) {
+    public void performCheck(Long endpointId) {
+        Endpoint endpoint = endpointRepository.findByIdAndDeletedFalse(endpointId)
+            .orElseThrow(() -> new EndpointNotFoundException("엔드포인트를 찾을 수 없습니다."));
         CheckResult result = httpCheckerService.check(endpoint);
         checkResultRepository.save(result);
         endpoint.updateLastCheckedAt();
