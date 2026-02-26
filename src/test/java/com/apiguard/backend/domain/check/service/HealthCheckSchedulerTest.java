@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.concurrent.Executor;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.BDDMockito.willThrow;
@@ -89,13 +90,13 @@ class HealthCheckSchedulerTest {
 
         given(endpointRepository.findByIsActiveTrueAndDeletedFalse())
             .willReturn(List.of(endpoint));
-        willDoNothing().given(checkService).performCheck(any(Endpoint.class));
+        willDoNothing().given(checkService).performCheck(anyLong());
 
         // when
         healthCheckScheduler.scheduleHealthChecks();
 
         // then
-        verify(checkService).performCheck(endpoint);
+        verify(checkService).performCheck(endpoint.getId());
     }
 
     @Test
@@ -113,7 +114,7 @@ class HealthCheckSchedulerTest {
         healthCheckScheduler.scheduleHealthChecks();
 
         // then
-        verify(checkService, never()).performCheck(any(Endpoint.class));
+        verify(checkService, never()).performCheck(anyLong());
     }
 
     @Test
@@ -128,14 +129,14 @@ class HealthCheckSchedulerTest {
         given(endpointRepository.findByIsActiveTrueAndDeletedFalse())
             .willReturn(List.of(endpoint1, endpoint2));
 
-        willThrow(new RuntimeException("체크 실패")).given(checkService).performCheck(endpoint1);
-        willDoNothing().given(checkService).performCheck(endpoint2);
+        willThrow(new RuntimeException("체크 실패")).given(checkService).performCheck(endpoint1.getId());
+        willDoNothing().given(checkService).performCheck(endpoint2.getId());
 
         // when
         healthCheckScheduler.scheduleHealthChecks();
 
         // then
-        verify(checkService).performCheck(endpoint1);
-        verify(checkService).performCheck(endpoint2);
+        verify(checkService).performCheck(endpoint1.getId());
+        verify(checkService).performCheck(endpoint2.getId());
     }
 }

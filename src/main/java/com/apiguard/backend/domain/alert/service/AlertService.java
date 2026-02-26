@@ -79,9 +79,9 @@ public class AlertService {
         return AlertResponse.from(alertConfig);
     }
 
-    public void checkAndAlert(Endpoint endpoint) {
+    public void checkAndAlert(Long endpointId) {
         List<AlertConfig> activeAlerts = alertConfigRepository
-            .findByEndpointAndIsActiveTrueAndDeletedFalse(endpoint);
+            .findByEndpointIdAndIsActiveTrueAndDeletedFalse(endpointId);
 
         if (activeAlerts.isEmpty()) {
             return;
@@ -93,7 +93,7 @@ public class AlertService {
             .orElse(3);
 
         List<CheckResult> recentResults = checkResultRepository
-            .findByEndpointIdOrderByCheckedAtDesc(endpoint.getId(), PageRequest.of(0, maxThreshold));
+            .findByEndpointIdOrderByCheckedAtDesc(endpointId, PageRequest.of(0, maxThreshold));
 
         if (recentResults.isEmpty()) {
             return;
@@ -109,7 +109,7 @@ public class AlertService {
 
         for (AlertConfig alertConfig : activeAlerts) {
             if (consecutiveFailures >= alertConfig.getThreshold()) {
-                sendAlertIfNotDuplicate(alertConfig, endpoint, recentResults);
+                sendAlertIfNotDuplicate(alertConfig, alertConfig.getEndpoint(), recentResults);
             }
         }
     }
