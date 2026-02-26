@@ -7,6 +7,9 @@ import com.apiguard.backend.domain.endpoint.entity.Endpoint;
 import com.apiguard.backend.domain.endpoint.repository.EndpointRepository;
 import com.apiguard.backend.domain.project.entity.Project;
 import com.apiguard.backend.domain.project.service.ProjectService;
+import com.apiguard.backend.domain.subscription.service.SubscriptionService;
+import com.apiguard.backend.domain.workspace.entity.WorkspaceMember;
+import com.apiguard.backend.domain.workspace.repository.WorkspaceMemberRepository;
 import com.apiguard.backend.global.exception.EndpointNotFoundException;
 import com.apiguard.backend.global.exception.ForbiddenException;
 import com.apiguard.backend.global.exception.ProjectNotFoundException;
@@ -26,10 +29,19 @@ public class EndpointService {
     private final EndpointRepository endpointRepository;
     private final ProjectService projectService;
     private final UserService userService;
+    private final SubscriptionService subscriptionService;
+    private final WorkspaceMemberRepository workspaceMemberRepository;
 
     @Transactional
     public EndpointResponse createEndpoint(Long projectId, CreateEndpointRequest request) {
         Project project = projectService.getProjectWithOwnerCheck(projectId);
+
+        if (project.getWorkspace() != null) {
+            Long workspaceId = project.getWorkspace().getId();
+            subscriptionService.validateEndpointCount(workspaceId, projectId);
+            int checkInterval = request.checkInterval() != null ? request.checkInterval() : 60;
+            subscriptionService.validateCheckInterval(workspaceId, checkInterval);
+        }
 
         Endpoint endpoint = Endpoint.builder()
             .project(project)
@@ -60,6 +72,11 @@ public class EndpointService {
     @Transactional
     public EndpointResponse updateEndpoint(Long id, UpdateEndpointRequest request) {
         Endpoint endpoint = getEndpointWithOwnerCheck(id);
+
+        if (endpoint.getProject().getWorkspace() != null && request.checkInterval() != null) {
+            Long workspaceId = endpoint.getProject().getWorkspace().getId();
+            subscriptionService.validateCheckInterval(workspaceId, request.checkInterval());
+        }
 
         endpoint.update(
             request.url(),
@@ -94,8 +111,14 @@ public class EndpointService {
             throw new ProjectNotFoundException("프로젝트를 찾을 수 없습니다.");
         }
 
-        if (!endpoint.getProject().getUser().getId().equals(user.getId())) {
-            throw new ForbiddenException("해당 엔드포인트에 대한 권한이 없습니다.");
+        if (endpoint.getProject().getWorkspace() != null) {
+            Long workspaceId = endpoint.getProject().getWorkspace().getId();
+            workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, user.getId())
+                .orElseThrow(() -> new ForbiddenException("해당 엔드포인트에 대한 권한이 없습니다."));
+        } else {
+            if (!endpoint.getProject().getUser().getId().equals(user.getId())) {
+                throw new ForbiddenException("해당 엔드포인트에 대한 권한이 없습니다.");
+            }
         }
 
         return endpoint;
