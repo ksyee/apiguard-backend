@@ -11,6 +11,8 @@ public interface AlertConfigRepository extends JpaRepository<AlertConfig, Long> 
 
     List<AlertConfig> findByEndpointIdAndDeletedFalse(Long endpointId);
 
+    List<AlertConfig> findByEndpointIdAndIsActiveTrueAndDeletedFalse(Long endpointId);
+
     List<AlertConfig> findByEndpointAndIsActiveTrueAndDeletedFalse(Endpoint endpoint);
 
     Optional<AlertConfig> findByIdAndDeletedFalse(Long id);
