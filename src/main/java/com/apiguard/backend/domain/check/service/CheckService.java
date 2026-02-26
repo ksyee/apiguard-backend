@@ -17,7 +17,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -77,10 +76,10 @@ public class CheckService {
 
         return rows.stream()
             .map(row -> new HourlyStatResponse(
-                ((Timestamp) row[0]).toLocalDateTime(),
+                row[0] instanceof java.sql.Timestamp ts ? ts.toLocalDateTime() : (LocalDateTime) row[0],
                 ((Number) row[1]).longValue(),
                 ((Number) row[2]).longValue(),
-                ((Number) row[3]).doubleValue()
+                row[3] != null ? ((Number) row[3]).doubleValue() : 0.0
             ))
             .toList();
     }
