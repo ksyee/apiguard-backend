@@ -8,6 +8,7 @@ import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -22,6 +23,9 @@ public class EmailNotificationService implements NotificationService {
 
     private final JavaMailSender mailSender;
 
+    @Value("${spring.mail.username:no-reply@apiguard.com}")
+    private String fromAddress;
+
     @Override
     public boolean supports(AlertType alertType) {
         return alertType == AlertType.EMAIL;
@@ -33,6 +37,7 @@ public class EmailNotificationService implements NotificationService {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
+            helper.setFrom(fromAddress);
             helper.setTo(config.getTarget());
             helper.setSubject("[APIGuard] 엔드포인트 장애 알림 - " + endpoint.getUrl());
             helper.setText(buildHtmlContent(endpoint, recentFailures, config.getThreshold()), true);
