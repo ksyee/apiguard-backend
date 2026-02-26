@@ -1,116 +1,152 @@
-# API Guard Backend
+# APIGuard Backend
 
-API 모니터링 및 보안을 위한 백엔드 서비스
+API는 살아있어야 신뢰를 얻습니다.  
+APIGuard Backend는 엔드포인트 상태를 지속적으로 점검하고, 이상 징후를 빠르게 감지해, 팀이 장애 대응 시간을 줄이도록 설계된 모니터링 백엔드입니다.
 
-## Tech Stack
+## 무엇을 해결하나
 
-| Category  | Technology        |
-|-----------|-------------------|
-| Language  | Java 21           |
-| Framework | Spring Boot 4.0.1 |
-| Database  | PostgreSQL 18     |
-| Cache     | Redis 8           |
-| Auth      | JWT (jjwt 0.12.6) |
-| Migration | Flyway 11.1       |
-| Build     | Gradle            |
+- "배포 후 언제 깨졌는지 모른다"는 운영 리스크
+- 장애를 늦게 발견해 사용자 경험이 무너지는 문제
+- 흩어진 로그/알림으로 원인 파악이 느려지는 문제
+- 팀/플랜 규모에 맞는 운영 가드레일 부재
 
-## Project Structure
+## 핵심 기능
 
-```
-src/main/java/com/apiguard/backend
-├── domain
-│   ├── auth                    # 인증 도메인
-│   │   ├── controller
-│   │   ├── dto
-│   │   └── service
-│   └── user                    # 사용자 도메인
-│       ├── controller
-│       ├── dto
-│       ├── entity
-│       ├── repository
-│       └── service
-└── global
-    ├── common                  # 공통 응답, 헬스체크
-    ├── config                  # Security, JWT, Flyway 설정
-    └── exception               # 전역 예외 처리
-```
+- 워크스페이스 기반 멀티 프로젝트 관리
+- 프로젝트별 엔드포인트 등록/수정/활성화 토글
+- 스케줄러 기반 주기적 헬스체크 실행
+- 응답 상태/성공률/시간대별 통계 제공
+- 연속 실패 임계치 기반 알림 트리거
+- Redis 쿨다운 기반 중복 알림 방지
+- JWT 인증/인가 및 공통 응답 포맷 표준화
+- FREE/PRO 플랜별 기능 제한 정책 적용
 
-## Getting Started
+## 동작 흐름
 
-### Prerequisites
+1. 사용자가 워크스페이스와 프로젝트를 생성하고 엔드포인트를 등록합니다.
+2. 스케줄러가 활성 엔드포인트를 주기적으로 검사합니다.
+3. 체크 결과가 누적되며, 통계 API로 가시화 가능한 지표가 만들어집니다.
+4. 실패가 임계치를 넘으면 이메일/Slack 채널로 알림을 보냅니다.
+5. 동일 알림은 Redis 쿨다운으로 중복 발송을 억제합니다.
 
-- Java 21+
-- Docker & Docker Compose
+## 시각화
 
-### Run
+### 시스템 아키텍처
 
-```bash
-# 1. 인프라 실행 (PostgreSQL, Redis)
-docker-compose up -d
+```mermaid
+flowchart LR
+    Client[Web/App Client]
+    API[APIGuard Backend\nSpring Boot]
+    Auth[JWT Auth]
+    Scheduler[HealthCheckScheduler]
+    Checker[HttpChecker/CheckService]
+    Alert[AlertService]
+    PG[(PostgreSQL)]
+    Redis[(Redis)]
+    ExtAPI[Target APIs]
+    Email[Email Channel]
+    Slack[Slack Channel]
 
-# 2. 애플리케이션 실행
-./gradlew bootRun
-```
-
-### Environment
-
-필요한 환경 변수:
-
-| Variable      | Description |
-|---------------|-------------|
-| `DB_URL`      | 데이터베이스 URL  |
-| `DB_USERNAME` | 데이터베이스 사용자명 |
-| `DB_PASSWORD` | 데이터베이스 비밀번호 |
-| `JWT_SECRET`  | JWT 서명 키    |
-
-## API Endpoints
-
-### Auth
-
-| Method | Endpoint      | Description |
-|--------|---------------|-------------|
-| POST   | `/auth/login` | 로그인         |
-
-### User
-
-| Method | Endpoint        | Description |
-|--------|-----------------|-------------|
-| POST   | `/users/signup` | 회원가입        |
-| GET    | `/users/me`     | 내 정보 조회     |
-
-## API Response Format
-
-```json
-{
-  "data": {
-    ...
-  }
-}
+    Client --> API
+    API --> Auth
+    API --> PG
+    API --> Redis
+    Scheduler --> Checker
+    Checker --> ExtAPI
+    Checker --> PG
+    Scheduler --> Alert
+    Alert --> PG
+    Alert --> Redis
+    Alert --> Email
+    Alert --> Slack
 ```
 
-### Error Response
+### 체크 및 알림 시퀀스
 
-```json
-{
-  "message": "에러 메시지"
-}
+```mermaid
+sequenceDiagram
+    participant S as Scheduler
+    participant C as CheckService
+    participant T as Target API
+    participant DB as PostgreSQL
+    participant A as AlertService
+    participant R as Redis
+    participant N as Notification
+
+    S->>C: due endpoint 체크 실행
+    C->>T: HTTP 요청
+    T-->>C: status/latency 응답
+    C->>DB: CheckResult 저장
+    S->>A: checkAndAlert(endpointId)
+    A->>DB: 최근 결과 조회
+    A->>R: 중복 알림 키 확인(TTL)
+    alt 임계치 이상 + 미발송
+        A->>N: 이메일/Slack 발송
+        A->>R: 발송 키 저장(쿨다운)
+    else 조건 미충족 또는 중복
+        A-->>S: skip
+    end
 ```
 
-## Testing
+## 아키텍처 관점
 
-```bash
-./gradlew test
-```
+- **Layered Domain Architecture**: `controller -> service -> repository` 계층을 기준으로 도메인 책임을 분리했습니다.
+- **Stateful Data + Stateless Auth**: 데이터 일관성은 RDB(PostgreSQL)에서, 인증 상태는 JWT 기반 무상태 방식으로 처리합니다.
+- **Async Check Execution**: 스케줄러는 체크 대상을 병렬 실행해 대량 엔드포인트에서도 처리량을 확보합니다.
+- **Alert Deduplication**: Redis TTL 키로 동일 알림의 재발송을 제한해 알림 폭주를 방지합니다.
+- **Policy-Driven Subscription**: 플랜 제한은 정책 객체(`PlanLimitPolicy`)로 분리해 기능 확장 시 변경 범위를 최소화합니다.
 
-## Database Migration
+## 도메인 구성
 
-Flyway를 사용한 마이그레이션. 파일 위치: `src/main/resources/db/migration/`
+- `auth`: 로그인, 토큰 재발급, 로그아웃
+- `user`: 회원가입, 내 정보 조회/수정, 비밀번호 변경, 탈퇴
+- `workspace`: 워크스페이스/멤버/권한 관리
+- `project`: 모니터링 프로젝트 단위 관리
+- `endpoint`: 검사 대상 URL/메서드/주기 관리
+- `check`: 수동 테스트, 체크 히스토리, 통계
+- `alert`: 실패 기반 알림 정책 및 채널 관리
+- `subscription/payment`: 플랜 제약 및 결제 상태 관리
 
-```
-V1__init.sql              # 초기 스키마
-V2__add_role_to_users.sql # Role 컬럼 추가
-```
+## 플랜 정책
 
-## License
+| 항목 | FREE | PRO |
+|---|---:|---:|
+| 프로젝트당 엔드포인트 수 | 5 | 50 |
+| 최소 체크 주기(초) | 300 | 60 |
+| 엔드포인트당 알림 채널 수 | 1 | 제한 없음 |
+| 워크스페이스 멤버 수 | 1 | 제한 없음 |
+| 데이터 보관 기간(일) | 7 | 90 |
 
-MIT
+## 기술 스택
+
+- Java 21
+- Spring Boot, Spring Security, Spring Data JPA
+- PostgreSQL, Redis
+- JWT (`jjwt`)
+- OpenAPI/Swagger (`springdoc`)
+- Gradle
+
+## API 설계 원칙
+
+- JWT Bearer 기반 인증
+- 일관된 공통 응답 스키마 `ApiResponse<T>`
+- 도메인 예외를 전역 핸들러에서 표준 오류 형태로 변환
+- 화이트리스트 기반 공개 엔드포인트 최소화
+
+## 신뢰성 및 운영 고려사항
+
+- **체크 정확성**: 엔드포인트별 `checkInterval`과 `lastCheckedAt` 기반으로 점검 시점을 계산합니다.
+- **알림 신호 품질**: 단일 실패가 아닌 연속 실패 임계치로 알림을 트리거해 오탐을 줄입니다.
+- **보안 기본값**: CSRF/세션 기반 인증을 비활성화하고, 인증 필터 체인을 JWT 중심으로 구성합니다.
+- **확장 여지**: 알림 채널은 `NotificationService` 구현 추가로 확장 가능합니다.
+- **관측 가능성**: 헬스체크 시작/완료 및 실패 로그를 남겨 운영 중 추적 가능성을 확보합니다.
+
+## 프로젝트 철학
+
+이 프로젝트는 "헬스체크 도구"를 넘어서,  
+서비스 신뢰성을 코드 레벨에서 관리 가능한 운영 시스템으로 만드는 것을 목표로 합니다.
+
+## 문서
+
+- 상세 API 명세: `API_SPEC.md`
+- 개발 로드맵: `docs/APIGuard_Development_Roadmap.md`
