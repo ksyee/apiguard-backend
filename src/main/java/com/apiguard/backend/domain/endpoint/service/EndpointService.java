@@ -60,6 +60,7 @@ public class EndpointService {
     @Transactional
     public EndpointResponse updateEndpoint(Long id, UpdateEndpointRequest request) {
         Endpoint endpoint = getEndpointWithOwnerCheck(id);
+
         endpoint.update(
             request.url(),
             request.httpMethod(),
