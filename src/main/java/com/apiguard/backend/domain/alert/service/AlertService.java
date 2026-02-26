@@ -10,6 +10,7 @@ import com.apiguard.backend.domain.check.entity.CheckStatus;
 import com.apiguard.backend.domain.check.repository.CheckResultRepository;
 import com.apiguard.backend.domain.endpoint.entity.Endpoint;
 import com.apiguard.backend.domain.endpoint.service.EndpointService;
+import com.apiguard.backend.domain.subscription.service.SubscriptionService;
 import com.apiguard.backend.global.exception.AlertNotFoundException;
 import com.apiguard.backend.global.exception.ForbiddenException;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ public class AlertService {
     private final EndpointService endpointService;
     private final List<NotificationService> notificationServices;
     private final StringRedisTemplate stringRedisTemplate;
+    private final SubscriptionService subscriptionService;
 
     private static final String ALERT_SENT_KEY_PREFIX = "ALERT_SENT:";
     private static final Duration ALERT_COOLDOWN = Duration.ofMinutes(30);
@@ -40,6 +42,11 @@ public class AlertService {
     @Transactional
     public AlertResponse createAlert(Long endpointId, CreateAlertRequest request) {
         Endpoint endpoint = endpointService.getEndpointWithOwnerCheck(endpointId);
+
+        if (endpoint.getProject().getWorkspace() != null) {
+            Long workspaceId = endpoint.getProject().getWorkspace().getId();
+            subscriptionService.validateAlertChannelCount(workspaceId, endpointId);
+        }
 
         AlertConfig alertConfig = AlertConfig.builder()
             .endpoint(endpoint)
