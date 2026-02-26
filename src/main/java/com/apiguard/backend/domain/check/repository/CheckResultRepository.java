@@ -4,6 +4,7 @@ import com.apiguard.backend.domain.check.entity.CheckResult;
 import com.apiguard.backend.domain.check.entity.CheckStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -30,4 +31,8 @@ public interface CheckResultRepository extends JpaRepository<CheckResult, Long> 
     List<Object[]> findHourlyStatsByEndpointId(@Param("endpointId") Long endpointId, @Param("after") LocalDateTime after);
 
     List<CheckResult> findByEndpointIdOrderByCheckedAtDesc(Long endpointId, Pageable pageable);
+
+    @Modifying
+    @Query("DELETE FROM CheckResult cr WHERE cr.endpoint.id = :endpointId AND cr.checkedAt < :cutoff")
+    int deleteByEndpointIdAndCheckedAtBefore(@Param("endpointId") Long endpointId, @Param("cutoff") LocalDateTime cutoff);
 }

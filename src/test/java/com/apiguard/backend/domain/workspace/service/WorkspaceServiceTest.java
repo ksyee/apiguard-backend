@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
+import com.apiguard.backend.domain.subscription.service.SubscriptionService;
 import com.apiguard.backend.domain.user.entity.Role;
 import com.apiguard.backend.domain.user.entity.User;
 import com.apiguard.backend.domain.user.repository.UserRepository;
@@ -24,12 +25,14 @@ import com.apiguard.backend.global.exception.ForbiddenException;
 import com.apiguard.backend.global.exception.WorkspaceNotFoundException;
 import java.util.List;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class WorkspaceServiceTest {
@@ -44,10 +47,19 @@ class WorkspaceServiceTest {
     private UserRepository userRepository;
 
     @Mock
+    private SubscriptionService subscriptionService;
+
+    @Mock
     private UserService userService;
 
     @InjectMocks
     private WorkspaceService workspaceService;
+
+    @BeforeEach
+    void setUp() {
+        // @Lazy 필드는 @InjectMocks 생성자 주입 후 자동 주입되지 않으므로 직접 주입
+        ReflectionTestUtils.setField(workspaceService, "userService", userService);
+    }
 
     private User createUser(Long id) {
         return User.builder()
@@ -64,6 +76,7 @@ class WorkspaceServiceTest {
             .id(id)
             .name("My Workspace")
             .slug("my-workspace")
+            .owner(createUser(1L))
             .build();
     }
 
@@ -86,7 +99,6 @@ class WorkspaceServiceTest {
         // given
         User user = createUser(1L);
         given(userService.getUserDetail()).willReturn(user);
-        given(workspaceRepository.existsBySlug("my-workspace")).willReturn(false);
 
         Workspace saved = createWorkspace(1L);
         given(workspaceRepository.save(any(Workspace.class))).willReturn(saved);
@@ -101,8 +113,9 @@ class WorkspaceServiceTest {
         // then
         assertThat(response.id()).isEqualTo(1L);
         assertThat(response.name()).isEqualTo("My Workspace");
-        assertThat(response.slug()).isEqualTo("my-workspace");
+        assertThat(response.role()).isEqualTo(WorkspaceRole.OWNER);
         verify(workspaceMemberRepository).save(any(WorkspaceMember.class));
+        verify(subscriptionService).createDefaultSubscription(saved);
     }
 
     // -------------------------------------------------------------------------
@@ -118,7 +131,7 @@ class WorkspaceServiceTest {
         Workspace ws2 = createWorkspace(2L);
 
         given(userService.getUserDetail()).willReturn(user);
-        given(workspaceMemberRepository.findByUserIdWithWorkspace(1L)).willReturn(List.of(
+        given(workspaceMemberRepository.findAllByUserId(1L)).willReturn(List.of(
             createMember(1L, ws1, user, WorkspaceRole.OWNER),
             createMember(2L, ws2, user, WorkspaceRole.MEMBER)
         ));
@@ -140,10 +153,12 @@ class WorkspaceServiceTest {
         // given
         User user = createUser(1L);
         Workspace workspace = createWorkspace(1L);
+        WorkspaceMember ownerMember = createMember(1L, workspace, user, WorkspaceRole.OWNER);
 
         given(userService.getUserDetail()).willReturn(user);
         given(workspaceRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(workspace));
-        given(workspaceMemberRepository.existsByWorkspaceIdAndUserId(1L, 1L)).willReturn(true);
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 1L))
+            .willReturn(Optional.of(ownerMember));
 
         // when
         WorkspaceResponse response = workspaceService.getWorkspace(1L);
@@ -151,6 +166,7 @@ class WorkspaceServiceTest {
         // then
         assertThat(response.id()).isEqualTo(1L);
         assertThat(response.slug()).isEqualTo("my-workspace");
+        assertThat(response.role()).isEqualTo(WorkspaceRole.OWNER);
     }
 
     @Test
@@ -162,7 +178,8 @@ class WorkspaceServiceTest {
 
         given(userService.getUserDetail()).willReturn(user);
         given(workspaceRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(workspace));
-        given(workspaceMemberRepository.existsByWorkspaceIdAndUserId(1L, 1L)).willReturn(false);
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 1L))
+            .willReturn(Optional.empty());
 
         // when & then
         assertThatThrownBy(() -> workspaceService.getWorkspace(1L))
@@ -199,7 +216,8 @@ class WorkspaceServiceTest {
 
         given(userService.getUserDetail()).willReturn(user);
         given(workspaceRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(workspace));
-        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 1L)).willReturn(Optional.of(ownerMember));
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 1L))
+            .willReturn(Optional.of(ownerMember));
 
         // when
         workspaceService.deleteWorkspace(1L);
@@ -210,7 +228,7 @@ class WorkspaceServiceTest {
     }
 
     @Test
-    @DisplayName("owner가 아닌 경우 워크스페이스 삭제 시 403 예외")
+    @DisplayName("OWNER가 아닌 경우 워크스페이스 삭제 시 403 예외")
     void deleteWorkspace_notOwner_forbidden() {
         // given
         User user = createUser(1L);
@@ -219,12 +237,13 @@ class WorkspaceServiceTest {
 
         given(userService.getUserDetail()).willReturn(user);
         given(workspaceRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(workspace));
-        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 1L)).willReturn(Optional.of(memberRole));
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 1L))
+            .willReturn(Optional.of(memberRole));
 
         // when & then
         assertThatThrownBy(() -> workspaceService.deleteWorkspace(1L))
             .isInstanceOf(ForbiddenException.class)
-            .hasMessage("워크스페이스 삭제는 owner만 가능합니다.");
+            .hasMessage("워크스페이스 삭제는 OWNER만 가능합니다.");
     }
 
     // -------------------------------------------------------------------------
@@ -241,8 +260,9 @@ class WorkspaceServiceTest {
 
         given(userService.getUserDetail()).willReturn(user1);
         given(workspaceRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(workspace));
-        given(workspaceMemberRepository.existsByWorkspaceIdAndUserId(1L, 1L)).willReturn(true);
-        given(workspaceMemberRepository.findByWorkspaceId(1L)).willReturn(List.of(
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 1L))
+            .willReturn(Optional.of(createMember(1L, workspace, user1, WorkspaceRole.OWNER)));
+        given(workspaceMemberRepository.findByWorkspaceIdAndDeletedFalse(1L)).willReturn(List.of(
             createMember(1L, workspace, user1, WorkspaceRole.OWNER),
             createMember(2L, workspace, user2, WorkspaceRole.MEMBER)
         ));
@@ -252,8 +272,8 @@ class WorkspaceServiceTest {
 
         // then
         assertThat(result).hasSize(2);
-        assertThat(result.get(0).role()).isEqualTo("owner");
-        assertThat(result.get(1).role()).isEqualTo("member");
+        assertThat(result.get(0).role()).isEqualTo(WorkspaceRole.OWNER);
+        assertThat(result.get(1).role()).isEqualTo(WorkspaceRole.MEMBER);
     }
 
     // -------------------------------------------------------------------------
@@ -271,19 +291,22 @@ class WorkspaceServiceTest {
 
         given(userService.getUserDetail()).willReturn(currentUser);
         given(workspaceRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(workspace));
-        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 1L)).willReturn(Optional.of(ownerMember));
-        given(userRepository.findByEmailAndDeletedFalse("user2@email.com")).willReturn(Optional.of(targetUser));
-        given(workspaceMemberRepository.existsByWorkspaceIdAndUserId(1L, 2L)).willReturn(false);
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 1L))
+            .willReturn(Optional.of(ownerMember));
+        given(userRepository.findByEmailAndDeletedFalse("user2@email.com"))
+            .willReturn(Optional.of(targetUser));
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 2L))
+            .willReturn(Optional.empty());
         given(workspaceMemberRepository.save(any(WorkspaceMember.class)))
             .willAnswer(invocation -> invocation.getArgument(0));
 
         // when
         WorkspaceMemberResponse response = workspaceService.inviteMember(1L,
-            new InviteMemberRequest("user2@email.com", "member"));
+            new InviteMemberRequest("user2@email.com"));
 
         // then
         assertThat(response.userId()).isEqualTo(2L);
-        assertThat(response.role()).isEqualTo("member");
+        assertThat(response.role()).isEqualTo(WorkspaceRole.MEMBER);
     }
 
     @Test
@@ -297,19 +320,22 @@ class WorkspaceServiceTest {
 
         given(userService.getUserDetail()).willReturn(currentUser);
         given(workspaceRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(workspace));
-        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 1L)).willReturn(Optional.of(ownerMember));
-        given(userRepository.findByEmailAndDeletedFalse("user2@email.com")).willReturn(Optional.of(targetUser));
-        given(workspaceMemberRepository.existsByWorkspaceIdAndUserId(1L, 2L)).willReturn(true);
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 1L))
+            .willReturn(Optional.of(ownerMember));
+        given(userRepository.findByEmailAndDeletedFalse("user2@email.com"))
+            .willReturn(Optional.of(targetUser));
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 2L))
+            .willReturn(Optional.of(createMember(2L, workspace, targetUser, WorkspaceRole.MEMBER)));
 
         // when & then
         assertThatThrownBy(() -> workspaceService.inviteMember(1L,
-            new InviteMemberRequest("user2@email.com", "member")))
+            new InviteMemberRequest("user2@email.com")))
             .isInstanceOf(IllegalArgumentException.class)
-            .hasMessage("이미 워크스페이스 멤버입니다.");
+            .hasMessage("이미 워크스페이스의 멤버입니다.");
     }
 
     @Test
-    @DisplayName("admin 미만 권한으로 멤버 초대 시 403 예외")
+    @DisplayName("ADMIN 미만 권한으로 멤버 초대 시 403 예외")
     void inviteMember_notAdminOrAbove_forbidden() {
         // given
         User currentUser = createUser(1L);
@@ -318,13 +344,14 @@ class WorkspaceServiceTest {
 
         given(userService.getUserDetail()).willReturn(currentUser);
         given(workspaceRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(workspace));
-        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 1L)).willReturn(Optional.of(viewerMember));
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 1L))
+            .willReturn(Optional.of(viewerMember));
 
         // when & then
         assertThatThrownBy(() -> workspaceService.inviteMember(1L,
-            new InviteMemberRequest("user2@email.com", "member")))
+            new InviteMemberRequest("user2@email.com")))
             .isInstanceOf(ForbiddenException.class)
-            .hasMessage("admin 이상의 권한이 필요합니다.");
+            .hasMessage("멤버 초대는 ADMIN 이상만 가능합니다.");
     }
 
     // -------------------------------------------------------------------------
@@ -343,37 +370,37 @@ class WorkspaceServiceTest {
 
         given(userService.getUserDetail()).willReturn(currentUser);
         given(workspaceRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(workspace));
-        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 1L)).willReturn(Optional.of(ownerMember));
-        given(workspaceMemberRepository.findByIdAndWorkspaceId(2L, 1L)).willReturn(Optional.of(targetMember));
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 1L))
+            .willReturn(Optional.of(ownerMember));
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 2L))
+            .willReturn(Optional.of(targetMember));
 
         // when
         WorkspaceMemberResponse response = workspaceService.updateMemberRole(1L, 2L,
-            new UpdateMemberRoleRequest("admin"));
+            new UpdateMemberRoleRequest(WorkspaceRole.ADMIN));
 
         // then
-        assertThat(response.role()).isEqualTo("admin");
+        assertThat(response.role()).isEqualTo(WorkspaceRole.ADMIN);
     }
 
     @Test
-    @DisplayName("owner 역할 변경 시도 시 403 예외")
-    void updateMemberRole_cannotChangeOwner_forbidden() {
+    @DisplayName("OWNER가 아닌 경우 역할 변경 시도 시 403 예외")
+    void updateMemberRole_notOwner_forbidden() {
         // given
         User currentUser = createUser(1L);
-        User ownerUser = createUser(2L);
         Workspace workspace = createWorkspace(1L);
         WorkspaceMember adminMember = createMember(1L, workspace, currentUser, WorkspaceRole.ADMIN);
-        WorkspaceMember ownerMember = createMember(2L, workspace, ownerUser, WorkspaceRole.OWNER);
 
         given(userService.getUserDetail()).willReturn(currentUser);
         given(workspaceRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(workspace));
-        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 1L)).willReturn(Optional.of(adminMember));
-        given(workspaceMemberRepository.findByIdAndWorkspaceId(2L, 1L)).willReturn(Optional.of(ownerMember));
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 1L))
+            .willReturn(Optional.of(adminMember));
 
         // when & then
         assertThatThrownBy(() -> workspaceService.updateMemberRole(1L, 2L,
-            new UpdateMemberRoleRequest("member")))
+            new UpdateMemberRoleRequest(WorkspaceRole.MEMBER)))
             .isInstanceOf(ForbiddenException.class)
-            .hasMessage("owner의 역할은 변경할 수 없습니다.");
+            .hasMessage("역할 변경은 OWNER만 가능합니다.");
     }
 
     // -------------------------------------------------------------------------
@@ -392,8 +419,10 @@ class WorkspaceServiceTest {
 
         given(userService.getUserDetail()).willReturn(currentUser);
         given(workspaceRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(workspace));
-        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 1L)).willReturn(Optional.of(ownerMember));
-        given(workspaceMemberRepository.findByIdAndWorkspaceId(2L, 1L)).willReturn(Optional.of(targetMember));
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 1L))
+            .willReturn(Optional.of(ownerMember));
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 2L))
+            .willReturn(Optional.of(targetMember));
 
         // when
         workspaceService.removeMember(1L, 2L);
@@ -403,23 +432,21 @@ class WorkspaceServiceTest {
     }
 
     @Test
-    @DisplayName("owner 제거 시도 시 403 예외")
-    void removeMember_cannotRemoveOwner_forbidden() {
+    @DisplayName("OWNER가 아닌 경우 멤버 제거 시도 시 403 예외")
+    void removeMember_notOwner_forbidden() {
         // given
         User currentUser = createUser(1L);
-        User ownerUser = createUser(2L);
         Workspace workspace = createWorkspace(1L);
         WorkspaceMember adminMember = createMember(1L, workspace, currentUser, WorkspaceRole.ADMIN);
-        WorkspaceMember ownerMember = createMember(2L, workspace, ownerUser, WorkspaceRole.OWNER);
 
         given(userService.getUserDetail()).willReturn(currentUser);
         given(workspaceRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(workspace));
-        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 1L)).willReturn(Optional.of(adminMember));
-        given(workspaceMemberRepository.findByIdAndWorkspaceId(2L, 1L)).willReturn(Optional.of(ownerMember));
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 1L))
+            .willReturn(Optional.of(adminMember));
 
         // when & then
         assertThatThrownBy(() -> workspaceService.removeMember(1L, 2L))
             .isInstanceOf(ForbiddenException.class)
-            .hasMessage("owner는 제거할 수 없습니다.");
+            .hasMessage("멤버 제거는 OWNER만 가능합니다.");
     }
 }

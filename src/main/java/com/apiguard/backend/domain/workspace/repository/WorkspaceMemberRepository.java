@@ -10,14 +10,12 @@ import java.util.Optional;
 
 public interface WorkspaceMemberRepository extends JpaRepository<WorkspaceMember, Long> {
 
-    List<WorkspaceMember> findByWorkspaceId(Long workspaceId);
-
     Optional<WorkspaceMember> findByWorkspaceIdAndUserId(Long workspaceId, Long userId);
 
-    @Query("SELECT wm FROM WorkspaceMember wm JOIN FETCH wm.workspace w WHERE wm.user.id = :userId AND w.deleted = false")
-    List<WorkspaceMember> findByUserIdWithWorkspace(@Param("userId") Long userId);
+    @Query("SELECT wm FROM WorkspaceMember wm WHERE wm.workspace.id = :workspaceId AND wm.workspace.deleted = false")
+    List<WorkspaceMember> findByWorkspaceIdAndDeletedFalse(@Param("workspaceId") Long workspaceId);
 
-    boolean existsByWorkspaceIdAndUserId(Long workspaceId, Long userId);
+    long countByWorkspaceId(Long workspaceId);
 
-    Optional<WorkspaceMember> findByIdAndWorkspaceId(Long id, Long workspaceId);
+    List<WorkspaceMember> findAllByUserId(Long userId);
 }

@@ -10,4 +10,6 @@ public interface EndpointRepository extends JpaRepository<Endpoint, Long> {
     List<Endpoint> findByProjectIdAndDeletedFalse(Long projectId);
     Optional<Endpoint> findByIdAndDeletedFalse(Long id);
     List<Endpoint> findByIsActiveTrueAndDeletedFalse();
+    long countByProjectIdAndDeletedFalse(Long projectId);
+    List<Endpoint> findAllByDeletedFalse();
 }
