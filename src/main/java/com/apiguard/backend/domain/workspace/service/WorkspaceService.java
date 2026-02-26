@@ -1,6 +1,8 @@
 package com.apiguard.backend.domain.workspace.service;
 
+import com.apiguard.backend.domain.subscription.service.SubscriptionService;
 import com.apiguard.backend.domain.user.entity.User;
+import com.apiguard.backend.domain.user.repository.UserRepository;
 import com.apiguard.backend.domain.user.service.UserService;
 import com.apiguard.backend.domain.workspace.dto.*;
 import com.apiguard.backend.domain.workspace.entity.Workspace;
@@ -11,12 +13,12 @@ import com.apiguard.backend.domain.workspace.repository.WorkspaceRepository;
 import com.apiguard.backend.global.exception.ForbiddenException;
 import com.apiguard.backend.global.exception.UserNotFoundException;
 import com.apiguard.backend.global.exception.WorkspaceNotFoundException;
-import com.apiguard.backend.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.text.Normalizer;
 import java.util.List;
 
 @Service
@@ -27,169 +29,231 @@ public class WorkspaceService {
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final UserRepository userRepository;
-    private final UserService userService;
+    private final SubscriptionService subscriptionService;
+
+    @Autowired
+    @Lazy
+    private UserService userService;
 
     @Transactional
     public WorkspaceResponse createWorkspace(CreateWorkspaceRequest request) {
-        User currentUser = userService.getUserDetail();
-        String slug = generateUniqueSlug(request.name());
+        User user = userService.getUserDetail();
+        String slug = generateSlug(request.name(), user.getId());
 
         Workspace workspace = Workspace.builder()
             .name(request.name())
             .slug(slug)
+            .owner(user)
             .build();
+
         Workspace saved = workspaceRepository.save(workspace);
 
-        WorkspaceMember ownerMember = WorkspaceMember.builder()
+        WorkspaceMember member = WorkspaceMember.builder()
             .workspace(saved)
-            .user(currentUser)
+            .user(user)
             .role(WorkspaceRole.OWNER)
             .build();
-        workspaceMemberRepository.save(ownerMember);
+        workspaceMemberRepository.save(member);
 
-        return WorkspaceResponse.from(saved);
-    }
+        subscriptionService.createDefaultSubscription(saved);
 
-    public List<WorkspaceResponse> getMyWorkspaces() {
-        User currentUser = userService.getUserDetail();
-        return workspaceMemberRepository.findByUserIdWithWorkspace(currentUser.getId()).stream()
-            .map(member -> WorkspaceResponse.from(member.getWorkspace()))
-            .toList();
-    }
-
-    public WorkspaceResponse getWorkspace(Long id) {
-        Workspace workspace = getWorkspaceWithMemberCheck(id);
-        return WorkspaceResponse.from(workspace);
+        return WorkspaceResponse.from(saved, WorkspaceRole.OWNER);
     }
 
     @Transactional
-    public void deleteWorkspace(Long id) {
-        User currentUser = userService.getUserDetail();
-        Workspace workspace = workspaceRepository.findByIdAndDeletedFalse(id)
+    public WorkspaceResponse createPersonalWorkspace(User savedUser) {
+        String workspaceName = savedUser.getNickname() + "의 워크스페이스";
+        String slug = generateSlug(savedUser.getNickname(), savedUser.getId());
+
+        Workspace workspace = Workspace.builder()
+            .name(workspaceName)
+            .slug(slug)
+            .owner(savedUser)
+            .build();
+
+        Workspace saved = workspaceRepository.save(workspace);
+
+        WorkspaceMember member = WorkspaceMember.builder()
+            .workspace(saved)
+            .user(savedUser)
+            .role(WorkspaceRole.OWNER)
+            .build();
+        workspaceMemberRepository.save(member);
+
+        subscriptionService.createDefaultSubscription(saved);
+
+        return WorkspaceResponse.from(saved, WorkspaceRole.OWNER);
+    }
+
+    public List<WorkspaceResponse> getMyWorkspaces() {
+        User user = userService.getUserDetail();
+        return workspaceMemberRepository.findAllByUserId(user.getId()).stream()
+            .filter(m -> !m.getWorkspace().isDeleted())
+            .map(m -> WorkspaceResponse.from(m.getWorkspace(), m.getRole()))
+            .toList();
+    }
+
+    public WorkspaceResponse getWorkspace(Long workspaceId) {
+        User user = userService.getUserDetail();
+        Workspace workspace = workspaceRepository.findByIdAndDeletedFalse(workspaceId)
             .orElseThrow(() -> new WorkspaceNotFoundException("워크스페이스를 찾을 수 없습니다."));
 
-        WorkspaceMember member = workspaceMemberRepository.findByWorkspaceIdAndUserId(id, currentUser.getId())
+        WorkspaceMember member = workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, user.getId())
+            .orElseThrow(() -> new ForbiddenException("해당 워크스페이스에 대한 권한이 없습니다."));
+
+        return WorkspaceResponse.from(workspace, member.getRole());
+    }
+
+    @Transactional
+    public void deleteWorkspace(Long workspaceId) {
+        User user = userService.getUserDetail();
+        Workspace workspace = workspaceRepository.findByIdAndDeletedFalse(workspaceId)
+            .orElseThrow(() -> new WorkspaceNotFoundException("워크스페이스를 찾을 수 없습니다."));
+
+        WorkspaceMember member = workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, user.getId())
             .orElseThrow(() -> new ForbiddenException("해당 워크스페이스에 대한 권한이 없습니다."));
 
         if (member.getRole() != WorkspaceRole.OWNER) {
-            throw new ForbiddenException("워크스페이스 삭제는 owner만 가능합니다.");
+            throw new ForbiddenException("워크스페이스 삭제는 OWNER만 가능합니다.");
         }
 
         workspace.softDelete();
     }
 
+    @Transactional
+    public WorkspaceMemberResponse inviteMember(Long workspaceId, InviteMemberRequest request) {
+        User currentUser = userService.getUserDetail();
+
+        workspaceRepository.findByIdAndDeletedFalse(workspaceId)
+            .orElseThrow(() -> new WorkspaceNotFoundException("워크스페이스를 찾을 수 없습니다."));
+
+        WorkspaceMember currentMember = workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, currentUser.getId())
+            .orElseThrow(() -> new ForbiddenException("해당 워크스페이스에 대한 권한이 없습니다."));
+
+        if (currentMember.getRole() == WorkspaceRole.MEMBER || currentMember.getRole() == WorkspaceRole.VIEWER) {
+            throw new ForbiddenException("멤버 초대는 ADMIN 이상만 가능합니다.");
+        }
+
+        subscriptionService.validateMemberCount(workspaceId);
+
+        User invitedUser = userRepository.findByEmailAndDeletedFalse(request.email())
+            .orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다."));
+
+        if (workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, invitedUser.getId()).isPresent()) {
+            throw new IllegalArgumentException("이미 워크스페이스의 멤버입니다.");
+        }
+
+        Workspace workspace = workspaceRepository.findByIdAndDeletedFalse(workspaceId)
+            .orElseThrow(() -> new WorkspaceNotFoundException("워크스페이스를 찾을 수 없습니다."));
+
+        WorkspaceMember newMember = WorkspaceMember.builder()
+            .workspace(workspace)
+            .user(invitedUser)
+            .role(WorkspaceRole.MEMBER)
+            .build();
+
+        WorkspaceMember saved = workspaceMemberRepository.save(newMember);
+        return WorkspaceMemberResponse.from(saved);
+    }
+
     public List<WorkspaceMemberResponse> getMembers(Long workspaceId) {
-        getWorkspaceWithMemberCheck(workspaceId);
-        return workspaceMemberRepository.findByWorkspaceId(workspaceId).stream()
+        User user = userService.getUserDetail();
+        workspaceRepository.findByIdAndDeletedFalse(workspaceId)
+            .orElseThrow(() -> new WorkspaceNotFoundException("워크스페이스를 찾을 수 없습니다."));
+
+        workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, user.getId())
+            .orElseThrow(() -> new ForbiddenException("해당 워크스페이스에 대한 권한이 없습니다."));
+
+        return workspaceMemberRepository.findByWorkspaceIdAndDeletedFalse(workspaceId).stream()
             .map(WorkspaceMemberResponse::from)
             .toList();
     }
 
     @Transactional
-    public WorkspaceMemberResponse inviteMember(Long workspaceId, InviteMemberRequest request) {
+    public WorkspaceMemberResponse updateMemberRole(Long workspaceId, Long userId, UpdateMemberRoleRequest request) {
         User currentUser = userService.getUserDetail();
-        Workspace workspace = workspaceRepository.findByIdAndDeletedFalse(workspaceId)
-            .orElseThrow(() -> new WorkspaceNotFoundException("워크스페이스를 찾을 수 없습니다."));
 
-        checkAdminOrAbove(workspaceId, currentUser.getId());
-
-        User targetUser = userRepository.findByEmailAndDeletedFalse(request.email())
-            .orElseThrow(() -> new UserNotFoundException("해당 이메일의 사용자를 찾을 수 없습니다."));
-
-        if (workspaceMemberRepository.existsByWorkspaceIdAndUserId(workspaceId, targetUser.getId())) {
-            throw new IllegalArgumentException("이미 워크스페이스 멤버입니다.");
-        }
-
-        WorkspaceRole role = WorkspaceRole.valueOf(request.role().toUpperCase());
-        WorkspaceMember newMember = WorkspaceMember.builder()
-            .workspace(workspace)
-            .user(targetUser)
-            .role(role)
-            .build();
-        workspaceMemberRepository.save(newMember);
-
-        return WorkspaceMemberResponse.from(newMember);
-    }
-
-    @Transactional
-    public WorkspaceMemberResponse updateMemberRole(Long workspaceId, Long memberId, UpdateMemberRoleRequest request) {
-        User currentUser = userService.getUserDetail();
         workspaceRepository.findByIdAndDeletedFalse(workspaceId)
             .orElseThrow(() -> new WorkspaceNotFoundException("워크스페이스를 찾을 수 없습니다."));
 
-        checkAdminOrAbove(workspaceId, currentUser.getId());
+        WorkspaceMember currentMember = workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, currentUser.getId())
+            .orElseThrow(() -> new ForbiddenException("해당 워크스페이스에 대한 권한이 없습니다."));
 
-        WorkspaceMember targetMember = workspaceMemberRepository.findByIdAndWorkspaceId(memberId, workspaceId)
-            .orElseThrow(() -> new ForbiddenException("해당 멤버를 찾을 수 없습니다."));
-
-        if (targetMember.getRole() == WorkspaceRole.OWNER) {
-            throw new ForbiddenException("owner의 역할은 변경할 수 없습니다.");
+        if (currentMember.getRole() != WorkspaceRole.OWNER) {
+            throw new ForbiddenException("역할 변경은 OWNER만 가능합니다.");
         }
 
-        WorkspaceRole newRole = WorkspaceRole.valueOf(request.role().toUpperCase());
-        targetMember.updateRole(newRole);
+        if (currentUser.getId().equals(userId)) {
+            throw new IllegalArgumentException("자기 자신의 역할은 변경할 수 없습니다.");
+        }
 
+        WorkspaceMember targetMember = workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, userId)
+            .orElseThrow(() -> new UserNotFoundException("해당 멤버를 찾을 수 없습니다."));
+
+        targetMember.updateRole(request.role());
         return WorkspaceMemberResponse.from(targetMember);
     }
 
     @Transactional
-    public void removeMember(Long workspaceId, Long memberId) {
+    public void removeMember(Long workspaceId, Long userId) {
         User currentUser = userService.getUserDetail();
+
         workspaceRepository.findByIdAndDeletedFalse(workspaceId)
             .orElseThrow(() -> new WorkspaceNotFoundException("워크스페이스를 찾을 수 없습니다."));
 
-        checkAdminOrAbove(workspaceId, currentUser.getId());
+        WorkspaceMember currentMember = workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, currentUser.getId())
+            .orElseThrow(() -> new ForbiddenException("해당 워크스페이스에 대한 권한이 없습니다."));
 
-        WorkspaceMember targetMember = workspaceMemberRepository.findByIdAndWorkspaceId(memberId, workspaceId)
-            .orElseThrow(() -> new ForbiddenException("해당 멤버를 찾을 수 없습니다."));
-
-        if (targetMember.getRole() == WorkspaceRole.OWNER) {
-            throw new ForbiddenException("owner는 제거할 수 없습니다.");
+        if (currentMember.getRole() != WorkspaceRole.OWNER) {
+            throw new ForbiddenException("멤버 제거는 OWNER만 가능합니다.");
         }
+
+        if (currentUser.getId().equals(userId)) {
+            throw new IllegalArgumentException("OWNER 본인은 제거할 수 없습니다.");
+        }
+
+        WorkspaceMember targetMember = workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, userId)
+            .orElseThrow(() -> new UserNotFoundException("해당 멤버를 찾을 수 없습니다."));
 
         workspaceMemberRepository.delete(targetMember);
     }
 
-    // --- private helpers ---
-
-    private Workspace getWorkspaceWithMemberCheck(Long workspaceId) {
-        User currentUser = userService.getUserDetail();
+    public Workspace getWorkspaceWithMemberCheck(Long workspaceId) {
+        User user = userService.getUserDetail();
         Workspace workspace = workspaceRepository.findByIdAndDeletedFalse(workspaceId)
             .orElseThrow(() -> new WorkspaceNotFoundException("워크스페이스를 찾을 수 없습니다."));
 
-        if (!workspaceMemberRepository.existsByWorkspaceIdAndUserId(workspaceId, currentUser.getId())) {
-            throw new ForbiddenException("해당 워크스페이스에 대한 권한이 없습니다.");
-        }
+        workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, user.getId())
+            .orElseThrow(() -> new ForbiddenException("해당 워크스페이스에 대한 권한이 없습니다."));
 
         return workspace;
     }
 
-    private void checkAdminOrAbove(Long workspaceId, Long userId) {
-        WorkspaceMember member = workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, userId)
+    public void checkWritePermission(Long workspaceId) {
+        User user = userService.getUserDetail();
+        WorkspaceMember member = workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, user.getId())
             .orElseThrow(() -> new ForbiddenException("해당 워크스페이스에 대한 권한이 없습니다."));
 
-        if (member.getRole() == WorkspaceRole.MEMBER || member.getRole() == WorkspaceRole.VIEWER) {
-            throw new ForbiddenException("admin 이상의 권한이 필요합니다.");
+        if (member.getRole() == WorkspaceRole.VIEWER) {
+            throw new ForbiddenException("VIEWER는 쓰기 작업을 수행할 수 없습니다.");
         }
     }
 
-    private String generateUniqueSlug(String name) {
-        String base = Normalizer.normalize(name, Normalizer.Form.NFD)
-            .replaceAll("[^\\p{ASCII}]", "")
-            .toLowerCase()
-            .trim()
-            .replaceAll("[^a-z0-9]+", "-")
-            .replaceAll("^-|-$", "");
+    public WorkspaceRole getMemberRole(Long workspaceId) {
+        User user = userService.getUserDetail();
+        WorkspaceMember member = workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, user.getId())
+            .orElseThrow(() -> new ForbiddenException("해당 워크스페이스에 대한 권한이 없습니다."));
+        return member.getRole();
+    }
 
+    private String generateSlug(String name, Long userId) {
+        String base = name.toLowerCase()
+            .replaceAll("[^a-z0-9가-힣\\s]", "")
+            .trim()
+            .replaceAll("\\s+", "-");
         if (base.isEmpty()) {
             base = "workspace";
         }
-
-        String slug = base;
-        int suffix = 1;
-        while (workspaceRepository.existsBySlug(slug)) {
-            slug = base + "-" + suffix++;
-        }
-        return slug;
+        return base + "-" + userId;
     }
 }
