@@ -3,8 +3,6 @@ package com.apiguard.backend.domain.check.service;
 import com.apiguard.backend.domain.check.entity.CheckResult;
 import com.apiguard.backend.domain.check.entity.CheckStatus;
 import com.apiguard.backend.domain.endpoint.entity.Endpoint;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
@@ -23,7 +21,6 @@ import java.util.Map;
 public class HttpCheckerService {
 
     private final RestTemplate restTemplate;
-    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     public CheckResult check(Endpoint endpoint) {
         CheckResult firstAttempt = doCheck(endpoint);
@@ -89,21 +86,11 @@ public class HttpCheckerService {
         }
     }
 
-    private HttpHeaders buildHeaders(String headersJson) {
+    private HttpHeaders buildHeaders(Map<String, String> headerMap) {
         HttpHeaders headers = new HttpHeaders();
-        if (headersJson == null || headersJson.isBlank()) {
-            return headers;
-        }
-
-        try {
-            Map<String, String> headerMap = objectMapper.readValue(
-                headersJson, new TypeReference<>() {}
-            );
+        if (headerMap != null && !headerMap.isEmpty()) {
             headerMap.forEach(headers::set);
-        } catch (Exception e) {
-            log.warn("헤더 파싱 실패: {}", e.getMessage());
         }
-
         return headers;
     }
 }
