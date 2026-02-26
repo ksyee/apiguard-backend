@@ -57,10 +57,14 @@ public class HealthCheckScheduler {
 
     private void executeCheck(Endpoint endpoint) {
         try {
-            checkService.performCheck(endpoint);
-            alertService.checkAndAlert(endpoint);
+            checkService.performCheck(endpoint.getId());
         } catch (Exception e) {
             log.error("헬스체크 실패: endpointId={}, url={}", endpoint.getId(), endpoint.getUrl(), e);
+        }
+        try {
+            alertService.checkAndAlert(endpoint.getId());
+        } catch (Exception e) {
+            log.error("알림 체크 실패: endpointId={}", endpoint.getId(), e);
         }
     }
 }
