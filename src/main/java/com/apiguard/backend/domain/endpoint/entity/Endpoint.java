@@ -3,11 +3,13 @@ package com.apiguard.backend.domain.endpoint.entity;
 import com.apiguard.backend.domain.project.entity.Project;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Entity
 @Table(name = "endpoints")
@@ -33,8 +35,9 @@ public class Endpoint {
     @Column(name = "http_method", nullable = false, length = 10)
     private HttpMethod httpMethod;
 
+    @JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
-    private String headers;
+    private Map<String, String> headers;
 
     @Column(columnDefinition = "text")
     private String body;
@@ -67,7 +70,7 @@ public class Endpoint {
 
     private LocalDateTime deletedAt;
 
-    public void update(String url, HttpMethod httpMethod, String headers, String body,
+    public void update(String url, HttpMethod httpMethod, Map<String, String> headers, String body,
                        Integer expectedStatusCode, Integer checkInterval) {
         if (url != null) this.url = url;
         if (httpMethod != null) this.httpMethod = httpMethod;

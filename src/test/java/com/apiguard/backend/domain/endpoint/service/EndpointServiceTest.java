@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.given;
 
 import com.apiguard.backend.domain.endpoint.dto.CreateEndpointRequest;
 import com.apiguard.backend.domain.endpoint.dto.EndpointResponse;
+import com.apiguard.backend.domain.endpoint.dto.UpdateEndpointRequest;
 import com.apiguard.backend.domain.endpoint.entity.Endpoint;
 import com.apiguard.backend.domain.endpoint.entity.HttpMethod;
 import com.apiguard.backend.domain.endpoint.repository.EndpointRepository;
@@ -19,6 +20,7 @@ import com.apiguard.backend.global.exception.EndpointNotFoundException;
 import com.apiguard.backend.global.exception.ForbiddenException;
 import com.apiguard.backend.global.exception.ProjectNotFoundException;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -67,6 +69,7 @@ class EndpointServiceTest {
             .project(project)
             .url("https://api.example.com/health")
             .httpMethod(HttpMethod.GET)
+            .headers(Map.of("Authorization", "Bearer token"))
             .expectedStatusCode(200)
             .checkInterval(60)
             .isActive(true)
@@ -83,7 +86,7 @@ class EndpointServiceTest {
         given(projectService.getProjectWithOwnerCheck(1L)).willReturn(project);
 
         CreateEndpointRequest request = new CreateEndpointRequest(
-            "https://api.example.com/health", HttpMethod.GET, null, null, 200, 60
+            "https://api.example.com/health", HttpMethod.GET, Map.of("Authorization", "Bearer token"), null, 200, 60
         );
 
         Endpoint saved = createEndpoint(1L, project);
@@ -96,6 +99,7 @@ class EndpointServiceTest {
         assertThat(response.id()).isEqualTo(1L);
         assertThat(response.url()).isEqualTo("https://api.example.com/health");
         assertThat(response.httpMethod()).isEqualTo(HttpMethod.GET);
+        assertThat(response.headers()).containsEntry("Authorization", "Bearer token");
     }
 
     @Test
@@ -168,6 +172,28 @@ class EndpointServiceTest {
 
         // then
         assertThat(response.isActive()).isFalse();
+    }
+
+    @Test
+    @DisplayName("엔드포인트 수정 시 빈 headers를 전달하면 기존 headers가 비워진다")
+    void updateEndpoint_clearHeaders() {
+        // given
+        User user = createUser(1L);
+        Project project = createProject(1L, user);
+        Endpoint endpoint = createEndpoint(1L, project);
+
+        given(userService.getUserDetail()).willReturn(user);
+        given(endpointRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(endpoint));
+
+        UpdateEndpointRequest request = new UpdateEndpointRequest(
+            null, null, Map.of(), null, null, null
+        );
+
+        // when
+        EndpointResponse response = endpointService.updateEndpoint(1L, request);
+
+        // then
+        assertThat(response.headers()).isEmpty();
     }
 
     @Test
