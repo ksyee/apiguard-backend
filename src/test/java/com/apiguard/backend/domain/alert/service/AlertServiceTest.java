@@ -251,11 +251,11 @@ class AlertServiceTest {
         Project project = createProject(1L, user);
         Endpoint endpoint = createEndpoint(1L, project);
 
-        given(alertConfigRepository.findByEndpointAndIsActiveTrueAndDeletedFalse(endpoint))
+        given(alertConfigRepository.findByEndpointIdAndIsActiveTrueAndDeletedFalse(1L))
             .willReturn(List.of());
 
         // when
-        alertService.checkAndAlert(endpoint);
+        alertService.checkAndAlert(1L);
 
         // then
         verify(checkResultRepository, never())
@@ -271,7 +271,7 @@ class AlertServiceTest {
         Endpoint endpoint = createEndpoint(1L, project);
         AlertConfig alertConfig = createAlertConfig(1L, endpoint);
 
-        given(alertConfigRepository.findByEndpointAndIsActiveTrueAndDeletedFalse(endpoint))
+        given(alertConfigRepository.findByEndpointIdAndIsActiveTrueAndDeletedFalse(1L))
             .willReturn(List.of(alertConfig));
 
         // 2 failures then 1 success (threshold is 3)
@@ -284,7 +284,7 @@ class AlertServiceTest {
             .willReturn(results);
 
         // when
-        alertService.checkAndAlert(endpoint);
+        alertService.checkAndAlert(1L);
 
         // then
         verify(stringRedisTemplate, never()).hasKey(anyString());
@@ -299,7 +299,7 @@ class AlertServiceTest {
         Endpoint endpoint = createEndpoint(1L, project);
         AlertConfig alertConfig = createAlertConfig(1L, endpoint);
 
-        given(alertConfigRepository.findByEndpointAndIsActiveTrueAndDeletedFalse(endpoint))
+        given(alertConfigRepository.findByEndpointIdAndIsActiveTrueAndDeletedFalse(1L))
             .willReturn(List.of(alertConfig));
 
         List<CheckResult> results = List.of(
@@ -331,7 +331,7 @@ class AlertServiceTest {
         given(stringRedisTemplate.opsForValue()).willReturn(valueOperations);
 
         // when
-        alertService.checkAndAlert(endpoint);
+        alertService.checkAndAlert(1L);
 
         // then
         verify(mockNotification).send(eq(alertConfig), eq(endpoint), any());
@@ -347,7 +347,7 @@ class AlertServiceTest {
         Endpoint endpoint = createEndpoint(1L, project);
         AlertConfig alertConfig = createAlertConfig(1L, endpoint);
 
-        given(alertConfigRepository.findByEndpointAndIsActiveTrueAndDeletedFalse(endpoint))
+        given(alertConfigRepository.findByEndpointIdAndIsActiveTrueAndDeletedFalse(1L))
             .willReturn(List.of(alertConfig));
 
         List<CheckResult> results = List.of(
@@ -361,7 +361,7 @@ class AlertServiceTest {
         given(stringRedisTemplate.hasKey("ALERT_SENT:1")).willReturn(true);
 
         // when
-        alertService.checkAndAlert(endpoint);
+        alertService.checkAndAlert(1L);
 
         // then
         verify(stringRedisTemplate, never()).opsForValue();
