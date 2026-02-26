@@ -12,28 +12,30 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/projects")
 @RequiredArgsConstructor
 public class ProjectController {
 
     private final ProjectService projectService;
 
-    @PostMapping
-    public ApiResponse<ProjectResponse> createProject(@RequestBody @Valid CreateProjectRequest request) {
-        return ApiResponse.ok(projectService.createProject(request));
+    @PostMapping("/workspaces/{workspaceId}/projects")
+    public ApiResponse<ProjectResponse> createProject(
+        @PathVariable Long workspaceId,
+        @RequestBody @Valid CreateProjectRequest request
+    ) {
+        return ApiResponse.ok(projectService.createProject(workspaceId, request));
     }
 
-    @GetMapping
-    public ApiResponse<List<ProjectResponse>> getMyProjects() {
-        return ApiResponse.ok(projectService.getMyProjects());
+    @GetMapping("/workspaces/{workspaceId}/projects")
+    public ApiResponse<List<ProjectResponse>> getProjects(@PathVariable Long workspaceId) {
+        return ApiResponse.ok(projectService.getProjects(workspaceId));
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/projects/{id}")
     public ApiResponse<ProjectResponse> getProject(@PathVariable Long id) {
         return ApiResponse.ok(projectService.getProject(id));
     }
 
-    @PutMapping("/{id}")
+    @PatchMapping("/projects/{id}")
     public ApiResponse<ProjectResponse> updateProject(
         @PathVariable Long id,
         @RequestBody @Valid UpdateProjectRequest request
@@ -41,7 +43,7 @@ public class ProjectController {
         return ApiResponse.ok(projectService.updateProject(id, request));
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/projects/{id}")
     public ApiResponse<Void> deleteProject(@PathVariable Long id) {
         projectService.deleteProject(id);
         return ApiResponse.ok();
