@@ -42,8 +42,9 @@ public class Subscription {
         return expiredAt == null || expiredAt.isAfter(LocalDateTime.now());
     }
 
-    public void upgradeTo(PlanType planType, LocalDateTime expiredAt) {
+    public void upgradeTo(PlanType planType, String paymentKey, LocalDateTime expiredAt) {
         this.planType = planType;
+        this.externalSubscriptionId = paymentKey;
         this.expiredAt = expiredAt;
     }
 }

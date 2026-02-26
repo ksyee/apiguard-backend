@@ -28,6 +28,11 @@ spring:
 jwt:
   secret: apiguard-backend-temp-secret-key-for-local-development-02037409
 
+toss:
+  payments:
+    secret-key: **REMOVED-FROM-HISTORY**
+    client-key: **REMOVED-FROM-HISTORY**
+
 security:
   whitelist:
     - /auth/**  # 로그인, 토큰 재발급 등
