@@ -1,10 +1,8 @@
-package com.apiguard.backend.domain.user.entity;
+package com.apiguard.backend.domain.admin.notice.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -19,39 +17,35 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-// 보통 Entity에는 Setter를 쓰지 않음
 @Entity
-@Table(name = "users")
+@Table(name = "notices")
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
-public class User {
+public class Notice {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
-    private String email;
-
     @Column(nullable = false)
-    private String password;
+    private String title;
 
-    @Column(nullable = false)
-    private String nickname;
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String content;
 
+    @Builder.Default
     @Column(nullable = false)
-    @Enumerated(EnumType.STRING)
-    private Role role;
+    private boolean pinned = false;
 
-    @Column(nullable = false)
     @CreatedDate
+    @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(nullable = false)
     @LastModifiedDate
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
     @Builder.Default
@@ -60,22 +54,12 @@ public class User {
 
     private LocalDateTime deletedAt;
 
-    // 닉네임 변경
-    public void updateNickname(String nickname) {
-        this.nickname = nickname;
+    public void update(String title, String content, boolean pinned) {
+        this.title = title;
+        this.content = content;
+        this.pinned = pinned;
     }
 
-    // 비밀번호 변경
-    public void changePassword(String encodedPassword) {
-        this.password = encodedPassword;
-    }
-
-    // 역할 변경 (어드민 전용)
-    public void changeRole(Role role) {
-        this.role = role;
-    }
-
-    // Soft Delete
     public void softDelete() {
         this.deleted = true;
         this.deletedAt = LocalDateTime.now();

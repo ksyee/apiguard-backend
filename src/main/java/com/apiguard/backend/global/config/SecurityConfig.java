@@ -37,9 +37,10 @@ public class SecurityConfig {
             // Stateless 세션 설정 (JWT 사용)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             // YAML에서 가져온 whitelist URL들은 모두 허용
-            .authorizeHttpRequests(auth -> auth.requestMatchers(
-                    securityProperties.getWhitelist().toArray(new String[0])).permitAll().anyRequest()
-                .authenticated())
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers(securityProperties.getWhitelist().toArray(new String[0])).permitAll()
+                .requestMatchers("/admin/**").hasAuthority("ADMIN")
+                .anyRequest().authenticated())
             // JWT 인증 필터 추가
             .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider),
                 UsernamePasswordAuthenticationFilter.class);
