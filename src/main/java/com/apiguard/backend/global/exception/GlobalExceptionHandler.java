@@ -67,6 +67,12 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.NOT_FOUND, e.getMessage());
     }
 
+    @ExceptionHandler(NoticeNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNoticeNotFoundException(NoticeNotFoundException e) {
+        log.warn("공지사항 조회 실패: {}", e.getMessage());
+        return error(HttpStatus.NOT_FOUND, e.getMessage());
+    }
+
     @ExceptionHandler(PlanLimitExceededException.class)
     public ResponseEntity<ApiResponse<Void>> handlePlanLimitExceededException(PlanLimitExceededException e) {
         log.warn("플랜 제한 초과: {}", e.getMessage());
