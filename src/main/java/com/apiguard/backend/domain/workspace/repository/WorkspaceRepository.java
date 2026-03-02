@@ -10,4 +10,6 @@ public interface WorkspaceRepository extends JpaRepository<Workspace, Long> {
     Optional<Workspace> findByIdAndDeletedFalse(Long id);
 
     Optional<Workspace> findBySlugAndDeletedFalse(String slug);
+
+    boolean existsBySlug(String slug);
 }
