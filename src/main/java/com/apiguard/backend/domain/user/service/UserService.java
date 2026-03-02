@@ -63,7 +63,7 @@ public class UserService {
     @Transactional
     public Long signUp(SignUpRequest signUpRequest) {
 
-        if (userRepository.existsByEmailAndDeletedFalse(signUpRequest.email())) {
+        if (userRepository.existsByEmail(signUpRequest.email())) {
             throw new DuplicateEmailException("이미 사용 중인 이메일입니다.");
         }
 
