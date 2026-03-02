@@ -16,6 +16,7 @@ import com.apiguard.backend.global.exception.WorkspaceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,51 +39,59 @@ public class WorkspaceService {
     @Transactional
     public WorkspaceResponse createWorkspace(CreateWorkspaceRequest request) {
         User user = userService.getUserDetail();
-        String slug = generateSlug(request.name(), user.getId());
+        String slug = generateUniqueSlug(request.name(), user.getId());
 
-        Workspace workspace = Workspace.builder()
-            .name(request.name())
-            .slug(slug)
-            .owner(user)
-            .build();
+        try {
+            Workspace workspace = Workspace.builder()
+                .name(request.name())
+                .slug(slug)
+                .owner(user)
+                .build();
 
-        Workspace saved = workspaceRepository.save(workspace);
+            Workspace saved = workspaceRepository.save(workspace);
 
-        WorkspaceMember member = WorkspaceMember.builder()
-            .workspace(saved)
-            .user(user)
-            .role(WorkspaceRole.OWNER)
-            .build();
-        workspaceMemberRepository.save(member);
+            WorkspaceMember member = WorkspaceMember.builder()
+                .workspace(saved)
+                .user(user)
+                .role(WorkspaceRole.OWNER)
+                .build();
+            workspaceMemberRepository.save(member);
 
-        subscriptionService.createDefaultSubscription(saved);
+            subscriptionService.createDefaultSubscription(saved);
 
-        return WorkspaceResponse.from(saved, WorkspaceRole.OWNER);
+            return WorkspaceResponse.from(saved, WorkspaceRole.OWNER);
+        } catch (DataIntegrityViolationException e) {
+            throw new IllegalArgumentException("동일한 이름의 워크스페이스가 이미 존재합니다.");
+        }
     }
 
     @Transactional
     public WorkspaceResponse createPersonalWorkspace(User savedUser) {
         String workspaceName = savedUser.getNickname() + "의 워크스페이스";
-        String slug = generateSlug(savedUser.getNickname(), savedUser.getId());
+        String slug = generateUniqueSlug(savedUser.getNickname(), savedUser.getId());
 
-        Workspace workspace = Workspace.builder()
-            .name(workspaceName)
-            .slug(slug)
-            .owner(savedUser)
-            .build();
+        try {
+            Workspace workspace = Workspace.builder()
+                .name(workspaceName)
+                .slug(slug)
+                .owner(savedUser)
+                .build();
 
-        Workspace saved = workspaceRepository.save(workspace);
+            Workspace saved = workspaceRepository.save(workspace);
 
-        WorkspaceMember member = WorkspaceMember.builder()
-            .workspace(saved)
-            .user(savedUser)
-            .role(WorkspaceRole.OWNER)
-            .build();
-        workspaceMemberRepository.save(member);
+            WorkspaceMember member = WorkspaceMember.builder()
+                .workspace(saved)
+                .user(savedUser)
+                .role(WorkspaceRole.OWNER)
+                .build();
+            workspaceMemberRepository.save(member);
 
-        subscriptionService.createDefaultSubscription(saved);
+            subscriptionService.createDefaultSubscription(saved);
 
-        return WorkspaceResponse.from(saved, WorkspaceRole.OWNER);
+            return WorkspaceResponse.from(saved, WorkspaceRole.OWNER);
+        } catch (DataIntegrityViolationException e) {
+            throw new IllegalArgumentException("개인 워크스페이스 생성 중 충돌이 발생했습니다. 다시 시도해 주세요.");
+        }
     }
 
     public List<WorkspaceResponse> getMyWorkspaces() {
@@ -246,7 +255,7 @@ public class WorkspaceService {
         return member.getRole();
     }
 
-    private String generateSlug(String name, Long userId) {
+    private String generateUniqueSlug(String name, Long userId) {
         String base = name.toLowerCase()
             .replaceAll("[^a-z0-9가-힣\\s]", "")
             .trim()
@@ -254,6 +263,16 @@ public class WorkspaceService {
         if (base.isEmpty()) {
             base = "workspace";
         }
-        return base + "-" + userId;
+
+        String prefix = base + "-" + userId;
+        String candidate = prefix;
+        int suffix = 2;
+
+        while (workspaceRepository.existsBySlug(candidate)) {
+            candidate = prefix + "-" + suffix;
+            suffix++;
+        }
+
+        return candidate;
     }
 }
