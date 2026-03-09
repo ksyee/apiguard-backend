@@ -4,7 +4,11 @@ import com.apiguard.backend.domain.subscription.service.SubscriptionService;
 import com.apiguard.backend.domain.user.entity.User;
 import com.apiguard.backend.domain.user.repository.UserRepository;
 import com.apiguard.backend.domain.user.service.UserService;
-import com.apiguard.backend.domain.workspace.dto.*;
+import com.apiguard.backend.domain.workspace.dto.CreateWorkspaceRequest;
+import com.apiguard.backend.domain.workspace.dto.InviteMemberRequest;
+import com.apiguard.backend.domain.workspace.dto.UpdateMemberRoleRequest;
+import com.apiguard.backend.domain.workspace.dto.WorkspaceMemberResponse;
+import com.apiguard.backend.domain.workspace.dto.WorkspaceResponse;
 import com.apiguard.backend.domain.workspace.entity.Workspace;
 import com.apiguard.backend.domain.workspace.entity.WorkspaceMember;
 import com.apiguard.backend.domain.workspace.entity.WorkspaceRole;
@@ -32,6 +36,7 @@ public class WorkspaceService {
     private final UserRepository userRepository;
     private final SubscriptionService subscriptionService;
 
+    // UserService와 순환 참조가 있어 예외적으로 지연 필드 주입을 사용한다.
     @Autowired
     @Lazy
     private UserService userService;

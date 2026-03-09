@@ -9,8 +9,8 @@ import org.springframework.context.annotation.Configuration;
 @Getter
 @Setter
 @Configuration
-@ConfigurationProperties(prefix = "security") // application.yml의 security 하위 속성을 매핑
+@ConfigurationProperties(prefix = "security")
 public class SecurityProperties {
-    
-    private List<String> whitelist; // security.whitelist 값을 여기에 자동으로 넣어줌
+
+    private List<String> whitelist;
 }

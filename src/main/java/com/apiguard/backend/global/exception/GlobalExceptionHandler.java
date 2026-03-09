@@ -85,10 +85,34 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.FORBIDDEN, e.getMessage());
     }
 
+    @ExceptionHandler(PaymentNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handlePaymentNotFoundException(PaymentNotFoundException e) {
+        log.warn("결제 조회 실패: {}", e.getMessage());
+        return error(HttpStatus.NOT_FOUND, e.getMessage());
+    }
+
+    @ExceptionHandler(PaymentConflictException.class)
+    public ResponseEntity<ApiResponse<Void>> handlePaymentConflictException(PaymentConflictException e) {
+        log.warn("결제 충돌: {}", e.getMessage());
+        return error(HttpStatus.CONFLICT, e.getMessage());
+    }
+
+    @ExceptionHandler(PaymentValidationException.class)
+    public ResponseEntity<ApiResponse<Void>> handlePaymentValidationException(PaymentValidationException e) {
+        log.warn("결제 검증 실패: {}", e.getMessage());
+        return error(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
+
+    @ExceptionHandler(ExternalPaymentException.class)
+    public ResponseEntity<ApiResponse<Void>> handleExternalPaymentException(ExternalPaymentException e) {
+        log.warn("외부 결제 처리 실패: {}", e.getMessage());
+        return error(HttpStatus.BAD_GATEWAY, e.getMessage());
+    }
+
     @ExceptionHandler(PaymentException.class)
     public ResponseEntity<ApiResponse<Void>> handlePaymentException(PaymentException e) {
-        log.warn("결제 처리 실패: {}", e.getMessage());
-        return error(HttpStatus.BAD_GATEWAY, e.getMessage());
+        log.error("결제 내부 처리 실패: {}", e.getMessage());
+        return error(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
