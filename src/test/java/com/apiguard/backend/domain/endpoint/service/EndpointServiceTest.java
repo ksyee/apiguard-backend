@@ -1,7 +1,7 @@
 package com.apiguard.backend.domain.endpoint.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 
@@ -126,7 +126,7 @@ class EndpointServiceTest {
 
     @Test
     @DisplayName("다른 사용자 엔드포인트 접근 시 403 예외")
-    void getEndpoint_forbidden() {
+    void getEndpoint_otherUser_throwsForbiddenException() {
         // given
         User owner = createUser(1L);
         User other = createUser(2L);
@@ -144,7 +144,7 @@ class EndpointServiceTest {
 
     @Test
     @DisplayName("존재하지 않는 엔드포인트 조회 시 404 예외")
-    void getEndpoint_notFound() {
+    void getEndpoint_missingEndpoint_throwsEndpointNotFoundException() {
         // given
         User user = createUser(1L);
         given(userService.getUserDetail()).willReturn(user);
@@ -198,7 +198,7 @@ class EndpointServiceTest {
 
     @Test
     @DisplayName("삭제된 프로젝트의 엔드포인트 접근 시 404 예외")
-    void getEndpoint_deletedProject_notFound() {
+    void getEndpoint_deletedProject_throwsProjectNotFoundException() {
         // given
         User user = createUser(1L);
         Project deletedProject = createProject(1L, user);

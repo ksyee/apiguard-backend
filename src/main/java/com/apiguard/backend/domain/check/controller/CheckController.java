@@ -6,10 +6,13 @@ import com.apiguard.backend.domain.check.dto.HourlyStatResponse;
 import com.apiguard.backend.domain.check.dto.ProjectStatsResponse;
 import com.apiguard.backend.domain.check.service.CheckService;
 import com.apiguard.backend.global.common.ApiResponse;
-import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
@@ -34,8 +37,9 @@ public class CheckController {
 
     @GetMapping("/endpoints/{id}/checks")
     public ApiResponse<List<CheckResultResponse>> getRecentChecks(
-            @PathVariable Long id,
-            @RequestParam(defaultValue = "20") int limit) {
+        @PathVariable Long id,
+        @RequestParam(defaultValue = "20") int limit
+    ) {
         return ApiResponse.ok(checkService.getRecentChecks(id, limit));
     }
 
