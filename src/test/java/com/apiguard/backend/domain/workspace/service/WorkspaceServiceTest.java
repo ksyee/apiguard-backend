@@ -1,7 +1,7 @@
 package com.apiguard.backend.domain.workspace.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
@@ -171,7 +171,7 @@ class WorkspaceServiceTest {
 
     @Test
     @DisplayName("워크스페이스 멤버가 아닌 경우 조회 시 403 예외")
-    void getWorkspace_notMember_forbidden() {
+    void getWorkspace_notMember_throwsForbiddenException() {
         // given
         User user = createUser(1L);
         Workspace workspace = createWorkspace(1L);
@@ -189,7 +189,7 @@ class WorkspaceServiceTest {
 
     @Test
     @DisplayName("존재하지 않는 워크스페이스 조회 시 404 예외")
-    void getWorkspace_notFound() {
+    void getWorkspace_missingWorkspace_throwsWorkspaceNotFoundException() {
         // given
         User user = createUser(1L);
 
@@ -229,7 +229,7 @@ class WorkspaceServiceTest {
 
     @Test
     @DisplayName("OWNER가 아닌 경우 워크스페이스 삭제 시 403 예외")
-    void deleteWorkspace_notOwner_forbidden() {
+    void deleteWorkspace_notOwner_throwsForbiddenException() {
         // given
         User user = createUser(1L);
         Workspace workspace = createWorkspace(1L);
@@ -311,7 +311,7 @@ class WorkspaceServiceTest {
 
     @Test
     @DisplayName("이미 멤버인 사용자 초대 시 400 예외")
-    void inviteMember_alreadyMember_badRequest() {
+    void inviteMember_alreadyMember_throwsIllegalArgumentException() {
         // given
         User currentUser = createUser(1L);
         User targetUser = createUser(2L);
@@ -336,7 +336,7 @@ class WorkspaceServiceTest {
 
     @Test
     @DisplayName("ADMIN 미만 권한으로 멤버 초대 시 403 예외")
-    void inviteMember_notAdminOrAbove_forbidden() {
+    void inviteMember_notAdminOrAbove_throwsForbiddenException() {
         // given
         User currentUser = createUser(1L);
         Workspace workspace = createWorkspace(1L);
@@ -385,7 +385,7 @@ class WorkspaceServiceTest {
 
     @Test
     @DisplayName("OWNER가 아닌 경우 역할 변경 시도 시 403 예외")
-    void updateMemberRole_notOwner_forbidden() {
+    void updateMemberRole_notOwner_throwsForbiddenException() {
         // given
         User currentUser = createUser(1L);
         Workspace workspace = createWorkspace(1L);
@@ -433,7 +433,7 @@ class WorkspaceServiceTest {
 
     @Test
     @DisplayName("OWNER가 아닌 경우 멤버 제거 시도 시 403 예외")
-    void removeMember_notOwner_forbidden() {
+    void removeMember_notOwner_throwsForbiddenException() {
         // given
         User currentUser = createUser(1L);
         Workspace workspace = createWorkspace(1L);

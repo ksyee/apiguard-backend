@@ -1,7 +1,7 @@
 package com.apiguard.backend.domain.user.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
@@ -50,33 +50,33 @@ class UserServiceTest {
 
     @Test
     @DisplayName("회원가입")
-    void signUp() {
-        // Given
+    void signUp_success() {
+        // given
         SignUpRequest request = new SignUpRequest("test@email.com", "test1234", "nickname");
         given(passwordEncoder.encode(request.password())).willReturn("encodedPassword");
 
         User savedUser = User.builder()
-                .id(1L)
-                .email(request.email())
-                .password("encodedPassword")
-                .nickname(request.nickname())
-                .role(Role.USER)
-                .build();
+            .id(1L)
+            .email(request.email())
+            .password("encodedPassword")
+            .nickname(request.nickname())
+            .role(Role.USER)
+            .build();
 
         given(userRepository.save(any(User.class))).willReturn(savedUser);
 
-        // When
+        // when
         Long userId = userService.signUp(request);
 
-        // Then
+        // then
         assertThat(userId).isEqualTo(1L);
         verify(userRepository).save(any(User.class));
     }
 
     @Test
     @DisplayName("사용자 정보 조회")
-    void getUserDetail() {
-        // Given
+    void getUserDetail_success() {
+        // given
         String email = "test@email.com";
         User user = User.builder().email(email).build();
 
@@ -90,19 +90,19 @@ class UserServiceTest {
 
         given(userRepository.findByEmailAndDeletedFalse(email)).willReturn(Optional.of(user));
 
-        // When
+        // when
         User result = userService.getUserDetail();
 
-        // Then
+        // then
         assertThat(result.getEmail()).isEqualTo(email);
     }
 
     @Test
     @DisplayName("이메일 중복 시 예외 발생")
-    void signUp_duplicateEmail_throwsException() {
+    void signUp_duplicateEmail_throwsDuplicateEmailException() {
         // given
         SignUpRequest request = new SignUpRequest("test@email.com", "password1234!", "john doe");
-        given(userRepository.existsByEmailAndDeletedFalse(request.email())).willReturn(true);
+        given(userRepository.existsByEmail(request.email())).willReturn(true);
 
         // when & then
         assertThatThrownBy(() -> userService.signUp(request)).isInstanceOf(
@@ -111,7 +111,7 @@ class UserServiceTest {
 
     @Test
     @DisplayName("인증 정보 없으면 예외 발생")
-    void getUserDetail_noAuthentication_throwsException() {
+    void getUserDetail_noAuthentication_throwsUnauthorizedException() {
         // given
         SecurityContextHolder.clearContext();
 
@@ -122,7 +122,7 @@ class UserServiceTest {
 
     @Test
     @DisplayName("사용자 없으면 예외 발생")
-    void getUserDetail_userNotFound_throwsException() {
+    void getUserDetail_userNotFound_throwsUserNotFoundException() {
         // given
         String email = "notfound@email.com";
 
@@ -143,7 +143,7 @@ class UserServiceTest {
 
     @Test
     @DisplayName("회원 탈퇴 성공")
-    void deleteUser_Success() {
+    void deleteUser_success() {
         // given
         String email = "test@email.com";
         User user = User.builder()
