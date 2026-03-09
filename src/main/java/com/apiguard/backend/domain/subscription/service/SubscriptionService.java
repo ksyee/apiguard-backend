@@ -71,9 +71,8 @@ public class SubscriptionService {
         if (policy.maxMembers() == Integer.MAX_VALUE) {
             return;
         }
-        Workspace workspace = workspaceRepository.findByIdAndDeletedFalse(workspaceId)
+        workspaceRepository.findByIdAndDeletedFalse(workspaceId)
             .orElseThrow(() -> new WorkspaceNotFoundException("워크스페이스를 찾을 수 없습니다."));
-        // FREE plan: maxMembers=1 means only owner, no invitations allowed
         throw new PlanLimitExceededException(
             "멤버 수 제한에 도달했습니다. FREE 플랜은 혼자만 사용할 수 있습니다."
         );

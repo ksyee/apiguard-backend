@@ -1,15 +1,18 @@
 package com.apiguard.backend.domain.payment.client;
 
-import com.apiguard.backend.global.exception.PaymentException;
+import com.apiguard.backend.global.exception.ExternalPaymentException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
 import java.util.Base64;
 import java.util.Map;
 
+@Slf4j
 @Component
 public class TossPaymentClient {
 
@@ -40,7 +43,15 @@ public class TossPaymentClient {
                 .retrieve()
                 .body(TossConfirmResponse.class);
         } catch (RestClientResponseException e) {
-            throw new PaymentException("토스 결제 승인 실패: " + e.getResponseBodyAsString());
+            log.warn(
+                "토스 결제 승인 실패: status={}, body={}",
+                e.getStatusCode(),
+                e.getResponseBodyAsString()
+            );
+            throw new ExternalPaymentException("토스 결제 승인에 실패했습니다.");
+        } catch (RestClientException e) {
+            log.warn("토스 결제 승인 호출 실패", e);
+            throw new ExternalPaymentException("토스 결제 승인에 실패했습니다.");
         }
     }
 }

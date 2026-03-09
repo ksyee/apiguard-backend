@@ -1,7 +1,7 @@
 package com.apiguard.backend.domain.project.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
@@ -102,7 +102,7 @@ class ProjectServiceTest {
 
     @Test
     @DisplayName("다른 사용자 프로젝트 접근 시 403 예외")
-    void getProject_forbidden() {
+    void getProject_otherUser_throwsForbiddenException() {
         // given
         User owner = createUser(1L);
         User other = createUser(2L);
@@ -119,7 +119,7 @@ class ProjectServiceTest {
 
     @Test
     @DisplayName("존재하지 않는 프로젝트 조회 시 404 예외")
-    void getProject_notFound() {
+    void getProject_missingProject_throwsProjectNotFoundException() {
         // given
         User user = createUser(1L);
         given(userService.getUserDetail()).willReturn(user);

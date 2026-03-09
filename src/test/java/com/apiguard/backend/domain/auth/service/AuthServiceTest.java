@@ -52,7 +52,7 @@ class AuthServiceTest {
 
     @Test
     @DisplayName("로그인 성공")
-    void testLogin() {
+    void login_success() {
         // given
         String email = "test@example.com";
         String password = "password";
@@ -83,8 +83,8 @@ class AuthServiceTest {
 
     @Test
     @DisplayName("로그인 실패 - 존재하지 않는 이메일")
-    void login_WithNonExistentEmail_ThrowException() {
-        // Given
+    void login_nonExistentEmail_throwsInvalidCredentialsException() {
+        // given
         given(userRepository.findByEmailAndDeletedFalse("wrong@email.com")).willReturn(Optional.empty());
 
         // when & then
@@ -94,7 +94,7 @@ class AuthServiceTest {
 
     @Test
     @DisplayName("로그인 실패 - 비밀번호 불일치")
-    void login_WithWrongPassword_ThrowException() {
+    void login_wrongPassword_throwsInvalidCredentialsException() {
         // given
         String email = "test@example.com";
         String wrongPassword = "wrongPassword";
@@ -116,7 +116,7 @@ class AuthServiceTest {
 
     @Test
     @DisplayName("토큰 재발급 성공")
-    void refresh_Success() {
+    void refresh_success() {
         // given
         String email = "test@example.com";
         String oldRefreshToken = "oldRefreshToken";
@@ -146,7 +146,7 @@ class AuthServiceTest {
 
     @Test
     @DisplayName("토큰 재발급 실패 - 만료된 RT")
-    void refresh_ExpiredToken_ThrowException() {
+    void refresh_expiredToken_throwsInvalidCredentialsException() {
         // given
         String expiredToken = "expiredToken";
         given(jwtTokenProvider.validateToken(expiredToken)).willReturn(false);
@@ -159,7 +159,7 @@ class AuthServiceTest {
 
     @Test
     @DisplayName("토큰 재발급 실패 - 로그아웃된 RT")
-    void refresh_LoggedOutToken_ThrowException() {
+    void refresh_loggedOutToken_throwsInvalidCredentialsException() {
         // given
         String refreshToken = "loggedOutRefreshToken";
         String email = "test@example.com";
@@ -177,7 +177,7 @@ class AuthServiceTest {
 
     @Test
     @DisplayName("로그아웃 성공")
-    void logout_Success() {
+    void logout_success() {
         // given
         String refreshToken = "validRefreshToken";
         String email = "test@example.com";
