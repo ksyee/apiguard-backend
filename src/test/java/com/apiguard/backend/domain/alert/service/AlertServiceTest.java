@@ -1,7 +1,7 @@
 package com.apiguard.backend.domain.alert.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -231,7 +231,7 @@ class AlertServiceTest {
 
     @Test
     @DisplayName("존재하지 않는 알림 설정 수정 시 404 예외")
-    void updateAlert_notFound() {
+    void updateAlert_missingAlert_throwsAlertNotFoundException() {
         // given
         given(alertConfigRepository.findByIdAndDeletedFalse(999L)).willReturn(Optional.empty());
 

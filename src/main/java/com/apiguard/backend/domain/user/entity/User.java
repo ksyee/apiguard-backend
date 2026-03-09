@@ -19,7 +19,6 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-// 보통 Entity에는 Setter를 쓰지 않음
 @Entity
 @Table(name = "users")
 @Getter
@@ -60,22 +59,18 @@ public class User {
 
     private LocalDateTime deletedAt;
 
-    // 닉네임 변경
     public void updateNickname(String nickname) {
         this.nickname = nickname;
     }
 
-    // 비밀번호 변경
     public void changePassword(String encodedPassword) {
         this.password = encodedPassword;
     }
 
-    // 역할 변경 (어드민 전용)
     public void changeRole(Role role) {
         this.role = role;
     }
 
-    // Soft Delete
     public void softDelete() {
         this.deleted = true;
         this.deletedAt = LocalDateTime.now();
