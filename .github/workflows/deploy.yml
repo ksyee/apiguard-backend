@@ -77,7 +77,18 @@ jobs:
           envs: DEPLOY_PATH
           script: |
             cd "${DEPLOY_PATH}"
-            docker compose -f docker-compose.server.yml up -d --build
+
+            dump_logs() {
+              docker compose -f docker-compose.server.yml ps || true
+              docker compose -f docker-compose.server.yml logs db --tail=200 || true
+              docker compose -f docker-compose.server.yml logs redis --tail=200 || true
+              docker compose -f docker-compose.server.yml logs app --tail=200 || true
+            }
+
+            if ! docker compose -f docker-compose.server.yml up -d --build; then
+              dump_logs
+              exit 1
+            fi
 
             set -a
             [ -f .env ] && . ./.env
@@ -90,6 +101,5 @@ jobs:
               sleep 5
             done
 
-            docker compose -f docker-compose.server.yml ps
-            docker compose -f docker-compose.server.yml logs app --tail=100
+            dump_logs
             exit 1
