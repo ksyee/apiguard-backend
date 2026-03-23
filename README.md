@@ -161,6 +161,7 @@ docker compose -f docker-compose.server.yml up -d --build
 ### 배포 파일
 
 - `Dockerfile`: Spring Boot 애플리케이션 이미지 빌드
+- `Dockerfile.deploy`: 배포용 JAR를 컨테이너 이미지로 패키징
 - `docker-compose.server.yml`: 앱 + PostgreSQL + Redis 운영 배포 구성
 - `.env.example`: 운영 환경변수 예시
 
@@ -176,7 +177,7 @@ docker compose -f docker-compose.server.yml up -d --build
 
 - `.github/workflows/deploy.yml`
 - `main` 브랜치에 push 되면 실행됩니다.
-- `bootJar`로 JAR를 빌드한 뒤 SSH/SCP로 서버에 전송하고, 지정한 `systemd` 서비스를 재시작합니다.
+- `bootJar`로 JAR를 빌드한 뒤 배포 번들을 SSH/SCP로 서버에 전송하고, `docker compose up -d --build`로 운영 스택을 갱신합니다.
 
 ### GitHub Secrets
 
@@ -187,15 +188,14 @@ docker compose -f docker-compose.server.yml up -d --build
 ### GitHub Variables
 
 - `DEPLOY_PORT`: SSH 포트, 기본값 `22`
-- `DEPLOY_PATH`: JAR 업로드 경로, 기본값 `/home/<DEPLOY_USER>/apps/apiguard`
-- `SERVICE_NAME`: 재시작할 `systemd` 서비스명, 기본값 `apiguard-backend`
+- `DEPLOY_PATH`: 배포 번들 업로드 및 Compose 실행 경로, 기본값 `/home/<DEPLOY_USER>/apps/apiguard`
 
 ### 서버 전제 조건
 
-- 대상 서버에 Java 21 런타임이 설치되어 있어야 합니다.
-- `systemd` 서비스가 업로드된 JAR 경로를 사용하도록 이미 구성되어 있어야 합니다.
+- 대상 서버에 Docker Engine과 Docker Compose가 설치되어 있어야 합니다.
+- 서버의 `DEPLOY_PATH` 경로에 운영용 `.env` 파일이 준비되어 있어야 합니다.
 - 배포 계정은 `DEPLOY_PATH`에 쓰기 가능해야 합니다.
-- 배포 계정은 `sudo systemctl restart <SERVICE_NAME>`를 비밀번호 없이 실행할 수 있어야 합니다.
+- 배포 계정은 `docker compose`를 실행할 수 있어야 합니다.
 
 ## API 설계 원칙
 
