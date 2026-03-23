@@ -26,7 +26,7 @@ spring:
           starttls:
             enable: false
 jwt:
-  secret: apiguard-backend-temp-secret-key-for-local-development-02037409
+  secret: 05da0a6607d4e09334c3f7f8ce1f361cb9b9dfac39143a2ab39da063185f57b39cc7ec746b23edf64b65e26823ac7d555507f826de68bd0277f0543c84155f9c
 
 toss:
   payments:
@@ -35,8 +35,8 @@ toss:
 
 security:
   whitelist:
-    - /auth/**  # 로그인, 토큰 재발급 등
-    - /users/signup  # 회원가입
+    - /auth/** # 로그인, 토큰 재발급 등
+    - /users/signup # 회원가입
     - /health
     - /error
 
