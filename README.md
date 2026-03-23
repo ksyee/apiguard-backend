@@ -126,6 +126,77 @@ sequenceDiagram
 - OpenAPI/Swagger (`springdoc`)
 - Gradle
 
+## 서버 배포
+
+- 앱 포트: `8080`
+- 실행 프로파일: `prod`
+- 헬스체크: `GET /health`
+- 필수 인프라: PostgreSQL, Redis
+
+### 운영 환경변수
+
+- `SPRING_PROFILES_ACTIVE=prod`
+- `DB_URL`
+- `DB_USERNAME`
+- `DB_PASSWORD`
+- `REDIS_HOST`
+- `REDIS_PORT`
+- `JWT_SECRET`
+- `MAIL_HOST`
+- `MAIL_PORT`
+- `MAIL_USERNAME`
+- `MAIL_PASSWORD`
+- `TOSS_SECRET_KEY`
+- `TOSS_CLIENT_KEY`
+
+### Docker Compose 실행
+
+1. `.env.example`을 복사해 `.env`를 만들고 운영 값을 채웁니다.
+2. 서버에서 아래 명령으로 전체 스택을 실행합니다.
+
+```bash
+docker compose -f docker-compose.server.yml up -d --build
+```
+
+### 배포 파일
+
+- `Dockerfile`: Spring Boot 애플리케이션 이미지 빌드
+- `docker-compose.server.yml`: 앱 + PostgreSQL + Redis 운영 배포 구성
+- `.env.example`: 운영 환경변수 예시
+
+## GitHub Actions
+
+### PR CI
+
+- `.github/workflows/pr-ci.yml`
+- `main` 대상으로 PR이 열리거나 갱신되면 실행됩니다.
+- PostgreSQL, Redis 서비스를 띄운 뒤 `./gradlew test bootJar --no-daemon`을 수행합니다.
+
+### Main Deploy
+
+- `.github/workflows/deploy.yml`
+- `main` 브랜치에 push 되면 실행됩니다.
+- `bootJar`로 JAR를 빌드한 뒤 SSH/SCP로 서버에 전송하고, 지정한 `systemd` 서비스를 재시작합니다.
+
+### GitHub Secrets
+
+- `DEPLOY_HOST`: 배포 대상 서버 호스트
+- `DEPLOY_USER`: 서버 접속 계정
+- `DEPLOY_SSH_KEY`: 서버 접속용 private key
+
+### GitHub Variables
+
+- `DEPLOY_PORT`: SSH 포트, 기본값 `22`
+- `DEPLOY_PATH`: JAR 업로드 경로, 기본값 `/home/<DEPLOY_USER>/apps/apiguard`
+- `SERVICE_NAME`: 재시작할 `systemd` 서비스명, 기본값 `apiguard-backend`
+
+### 서버 전제 조건
+
+- 대상 서버에 Java 21 런타임이 설치되어 있어야 합니다.
+- `systemd` 서비스가 업로드된 JAR 경로를 사용하도록 이미 구성되어 있어야 합니다.
+- 배포 계정은 `DEPLOY_PATH`에 쓰기 가능해야 합니다.
+- 배포 계정은 `sudo systemctl restart <SERVICE_NAME>`를 비밀번호 없이 실행할 수 있어야 합니다.
+
 ## API 설계 원칙
 
 - JWT Bearer 기반 인증
