@@ -17,10 +17,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      APP_JAR_NAME: apiguard-backend.jar
       DEPLOY_PORT: ${{ vars.DEPLOY_PORT != '' && vars.DEPLOY_PORT || '22' }}
       DEPLOY_PATH: ${{ vars.DEPLOY_PATH != '' && vars.DEPLOY_PATH || format('/home/{0}/apps/apiguard', secrets.DEPLOY_USER) }}
-      SERVICE_NAME: ${{ vars.SERVICE_NAME != '' && vars.SERVICE_NAME || 'apiguard-backend' }}
 
     steps:
       - name: Check out repository
@@ -39,39 +37,59 @@ jobs:
       - name: Build deployable JAR
         run: ./gradlew bootJar --no-daemon -x test
 
-      - name: Prepare artifact
+      - name: Prepare deploy bundle
         run: |
           mkdir -p dist
-          cp build/libs/*.jar dist/${APP_JAR_NAME}
+          cp build/libs/*.jar dist/apiguard-backend.jar
 
       - name: Ensure remote deploy path exists
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ env.DEPLOY_PORT }}
+          envs: DEPLOY_PATH
           script: |
             mkdir -p "${DEPLOY_PATH}"
 
-      - name: Upload JAR to server
+      - name: Upload deploy bundle to server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ env.DEPLOY_PORT }}
-          source: dist/${{ env.APP_JAR_NAME }}
+          source: "dist/apiguard-backend.jar,docker-compose.server.yml,Dockerfile.deploy"
           target: ${{ env.DEPLOY_PATH }}
-          strip_components: 1
 
-      - name: Restart application service
+      - name: Deploy with Docker Compose
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ env.DEPLOY_PORT }}
+          envs: DEPLOY_PATH
           script: |
-            sudo systemctl restart "${SERVICE_NAME}"
-            sudo systemctl is-active --quiet "${SERVICE_NAME}"
+            cd "${DEPLOY_PATH}"
+            docker compose -f docker-compose.server.yml up -d --build
+
+            set -a
+            [ -f .env ] && . ./.env
+            set +a
+
+            for i in $(seq 1 12); do
+              if curl -fsS "http://127.0.0.1:${APP_PORT:-8080}/health" >/dev/null; then
+                exit 0
+              fi
+              sleep 5
+            done
+
+            docker compose -f docker-compose.server.yml ps
+            docker compose -f docker-compose.server.yml logs app --tail=100
+            exit 1
