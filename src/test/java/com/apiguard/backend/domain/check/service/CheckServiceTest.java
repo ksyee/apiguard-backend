@@ -51,6 +51,9 @@ class CheckServiceTest {
     @Mock
     private ProjectService projectService;
 
+    @Mock
+    private CheckEventPublisher checkEventPublisher;
+
     @InjectMocks
     private CheckService checkService;
 
