@@ -31,6 +31,7 @@ public class CheckService {
     private final CheckResultRepository checkResultRepository;
     private final EndpointRepository endpointRepository;
     private final ProjectService projectService;
+    private final CheckEventPublisher checkEventPublisher;
 
     @Transactional
     public CheckResultResponse testEndpoint(Long endpointId) {
@@ -41,7 +42,15 @@ public class CheckService {
 
         endpoint.updateLastCheckedAt();
 
-        return CheckResultResponse.from(saved);
+        CheckResultResponse response = CheckResultResponse.from(saved);
+
+        try {
+            checkEventPublisher.publish(response, endpoint.getProject().getId());
+        } catch (Exception e) {
+            // WebSocket 발행 실패가 테스트 트랜잭션에 영향을 주지 않도록 한다.
+        }
+
+        return response;
     }
 
     @Transactional
@@ -49,8 +58,17 @@ public class CheckService {
         Endpoint endpoint = endpointRepository.findByIdAndDeletedFalse(endpointId)
             .orElseThrow(() -> new EndpointNotFoundException("엔드포인트를 찾을 수 없습니다."));
         CheckResult result = httpCheckerService.check(endpoint);
-        checkResultRepository.save(result);
+        CheckResult saved = checkResultRepository.save(result);
         endpoint.updateLastCheckedAt();
+
+        try {
+            checkEventPublisher.publish(
+                CheckResultResponse.from(saved),
+                endpoint.getProject().getId()
+            );
+        } catch (Exception e) {
+            // WebSocket 발행 실패가 헬스체크 트랜잭션에 영향을 주지 않도록 한다.
+        }
     }
 
     public EndpointStatsResponse getEndpointStats(Long endpointId) {

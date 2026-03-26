@@ -73,6 +73,12 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.NOT_FOUND, e.getMessage());
     }
 
+    @ExceptionHandler(StatusPageNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleStatusPageNotFoundException(StatusPageNotFoundException e) {
+        log.warn("상태 페이지 조회 실패: {}", e.getMessage());
+        return error(HttpStatus.NOT_FOUND, e.getMessage());
+    }
+
     @ExceptionHandler(PlanLimitExceededException.class)
     public ResponseEntity<ApiResponse<Void>> handlePlanLimitExceededException(PlanLimitExceededException e) {
         log.warn("플랜 제한 초과: {}", e.getMessage());
