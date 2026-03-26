@@ -39,6 +39,8 @@ public class SecurityConfig {
             // YAML에서 가져온 whitelist URL들은 모두 허용
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(securityProperties.getWhitelist().toArray(new String[0])).permitAll()
+                .requestMatchers("/ws/**").permitAll()
+                .requestMatchers("/status/**").permitAll()
                 .requestMatchers("/admin/**").hasAuthority("ADMIN")
                 .anyRequest().authenticated())
             // JWT 인증 필터 추가
