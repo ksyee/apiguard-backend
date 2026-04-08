@@ -13,4 +13,11 @@ import org.springframework.context.annotation.Configuration;
 public class SecurityProperties {
 
     private List<String> whitelist;
+    private Cors cors = new Cors();
+
+    @Getter
+    @Setter
+    public static class Cors {
+        private List<String> allowedOrigins = List.of("http://localhost:3000");
+    }
 }

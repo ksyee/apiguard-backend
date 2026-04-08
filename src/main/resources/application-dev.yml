@@ -43,3 +43,6 @@ security:
     # 개발 환경
     - /swagger-ui/**
     - /v3/api-docs/**
+  cors:
+    allowed-origins:
+      - http://localhost:3000
