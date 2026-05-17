@@ -52,6 +52,9 @@ All endpoints return `ApiResponse<T>`.
 - `HttpMethod`: `GET | POST | PUT | PATCH | DELETE | HEAD | OPTIONS`
 - `CheckStatus`: `SUCCESS | FAILURE | TIMEOUT | ERROR`
 - `AlertType`: `EMAIL | SLACK`
+- `IncidentStatus`: `OPEN | RESOLVED`
+- `IncidentType`: `AVAILABILITY | PERFORMANCE | CONTRACT_CHANGE`
+- `BreakingChangeRule`: `PATH_REMOVED | METHOD_REMOVED | REQUIRED_PARAMETER_ADDED | REQUIRED_REQUEST_BODY_ADDED | REQUEST_BODY_REQUIRED_FIELD_ADDED | RESPONSE_FIELD_REMOVED | RESPONSE_FIELD_TYPE_CHANGED`
 - `WorkspaceRole`: `OWNER | ADMIN | MEMBER | VIEWER`
 - `PaymentStatus`: `PENDING | SUCCESS | FAILED`
 
@@ -531,9 +534,105 @@ Response model
 
 ---
 
-## 10) Health
+## 10) Incidents
 
-### 10.1 Health Check
+### 10.1 Project Incidents
+`GET /projects/{projectId}/incidents` (auth required)
+
+Query params
+- `status`: optional `OPEN | RESOLVED`
+
+### 10.2 Endpoint Incidents
+`GET /endpoints/{endpointId}/incidents` (auth required)
+
+Behavior
+- 3 consecutive failed checks open an `AVAILABILITY` incident.
+- A successful check resolves an open `AVAILABILITY` incident.
+- 3 consecutive successful but slow responses over 1000ms open a `PERFORMANCE` incident.
+- OpenAPI breaking changes open a project-level `CONTRACT_CHANGE` incident.
+
+Response model
+```json
+{
+  "id": 1,
+  "endpointId": 1,
+  "projectId": 1,
+  "endpointUrl": "https://api.example.com/health",
+  "type": "AVAILABILITY",
+  "status": "OPEN",
+  "severity": "CRITICAL",
+  "title": "Endpoint availability incident",
+  "description": "최근 3회 연속 상태 체크가 실패했습니다.",
+  "detectedCount": 3,
+  "startedAt": "2026-05-13T10:00:00",
+  "lastDetectedAt": "2026-05-13T10:02:00",
+  "resolvedAt": null
+}
+```
+
+For `CONTRACT_CHANGE` incidents, `endpointId` and `endpointUrl` are `null` because the event belongs to the OpenAPI spec source and project, not to a single endpoint.
+
+---
+
+## 11) OpenAPI Spec Changes
+
+### 11.1 Create Spec Source
+`POST /projects/{projectId}/spec-sources` (auth required)
+
+Request
+```json
+{
+  "name": "Payments API",
+  "specUrl": "https://api.example.com/openapi.json"
+}
+```
+
+### 11.2 List Spec Sources
+`GET /projects/{projectId}/spec-sources` (auth required)
+
+### 11.3 Check Spec Source
+`POST /spec-sources/{sourceId}/check` (auth required)
+
+Behavior
+- Fetches the current OpenAPI JSON.
+- Stores a snapshot when the content hash changes.
+- Compares the latest snapshot with the previous snapshot.
+- Detects breaking changes for removed paths, removed methods, added required request parameters, newly required request bodies, added required request body fields, removed response fields, and changed response field types.
+- Creates or updates an open `CONTRACT_CHANGE` incident when breaking changes are detected.
+
+### 11.4 List Diffs
+`GET /spec-sources/{sourceId}/diffs` (auth required)
+
+### 11.5 Diff Detail
+`GET /spec-diffs/{diffId}` (auth required)
+
+Response model
+```json
+{
+  "id": 1,
+  "specSourceId": 1,
+  "baseSnapshotId": 1,
+  "headSnapshotId": 2,
+  "breaking": true,
+  "breakingChangeCount": 2,
+  "summary": "Detected 2 breaking change(s).",
+  "checkedAt": "2026-05-13T10:00:00",
+  "changes": [
+    {
+      "id": 1,
+      "rule": "PATH_REMOVED",
+      "location": "/v1/orders",
+      "description": "기존 path가 삭제되었습니다."
+    }
+  ]
+}
+```
+
+---
+
+## 12) Health
+
+### 12.1 Health Check
 `GET /health` (public)
 
 Response `200`
@@ -544,7 +643,7 @@ Response `200`
 }
 ```
 
-### 10.2 Test Error
+### 12.2 Test Error
 `GET /test-error` (auth required)
 
 Behavior
@@ -552,7 +651,7 @@ Behavior
 
 ---
 
-## 11) Operational Notes
+## 13) Operational Notes
 
 ### Scheduled Jobs
 - Health checks: fixed delay 60s scheduler + per-endpoint interval evaluation
@@ -566,4 +665,3 @@ Behavior
 | Max alert channels per endpoint | 1 | unlimited |
 | Max workspace members | 1 | unlimited |
 | Data retention (days) | 7 | 90 |
-

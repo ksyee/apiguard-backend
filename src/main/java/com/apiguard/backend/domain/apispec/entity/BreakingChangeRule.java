@@ -1,0 +1,11 @@
+package com.apiguard.backend.domain.apispec.entity;
+
+public enum BreakingChangeRule {
+    PATH_REMOVED,
+    METHOD_REMOVED,
+    REQUIRED_PARAMETER_ADDED,
+    REQUIRED_REQUEST_BODY_ADDED,
+    REQUEST_BODY_REQUIRED_FIELD_ADDED,
+    RESPONSE_FIELD_REMOVED,
+    RESPONSE_FIELD_TYPE_CHANGED
+}

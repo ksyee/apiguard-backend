@@ -32,7 +32,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(securityProperties.getCors().getAllowedOrigins());
+        SecurityProperties.Cors cors = securityProperties.getCors();
+        List<String> allowedOrigins = cors != null && cors.getAllowedOrigins() != null
+            ? cors.getAllowedOrigins()
+            : List.of("http://localhost:3000");
+        config.setAllowedOrigins(allowedOrigins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
@@ -44,6 +48,10 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        String[] whitelist = securityProperties.getWhitelist() != null
+            ? securityProperties.getWhitelist().toArray(new String[0])
+            : new String[0];
+
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(AbstractHttpConfigurer::disable)
@@ -51,7 +59,7 @@ public class SecurityConfig {
             .formLogin(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers(securityProperties.getWhitelist().toArray(new String[0])).permitAll()
+                .requestMatchers(whitelist).permitAll()
                 .requestMatchers("/ws/**").permitAll()
                 .requestMatchers("/status/**").permitAll()
                 .requestMatchers("/admin/**").hasAuthority("ADMIN")

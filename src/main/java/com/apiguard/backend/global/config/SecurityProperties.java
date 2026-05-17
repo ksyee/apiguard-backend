@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "security")
 public class SecurityProperties {
 
-    private List<String> whitelist;
+    private List<String> whitelist = List.of();
     private Cors cors = new Cors();
 
     @Getter

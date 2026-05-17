@@ -79,6 +79,12 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.NOT_FOUND, e.getMessage());
     }
 
+    @ExceptionHandler(ApiSpecNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleApiSpecNotFoundException(ApiSpecNotFoundException e) {
+        log.warn("API 스펙 조회 실패: {}", e.getMessage());
+        return error(HttpStatus.NOT_FOUND, e.getMessage());
+    }
+
     @ExceptionHandler(PlanLimitExceededException.class)
     public ResponseEntity<ApiResponse<Void>> handlePlanLimitExceededException(PlanLimitExceededException e) {
         log.warn("플랜 제한 초과: {}", e.getMessage());

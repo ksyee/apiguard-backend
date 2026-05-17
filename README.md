@@ -1,14 +1,17 @@
 # APIGuard Backend
 
-API는 살아있어야 신뢰를 얻습니다.  
-APIGuard Backend는 엔드포인트 상태를 지속적으로 점검하고, 이상 징후를 빠르게 감지해, 팀이 장애 대응 시간을 줄이도록 설계된 모니터링 백엔드입니다.
+APIGuard는 외부 API 의존성이 있는 서비스 팀을 위한 **API Reliability & Change Detection SaaS**입니다.
+
+등록된 API Endpoint를 주기적으로 확인하고, HTTP 상태와 응답 시간을 기록합니다.
+연속 실패가 발생하면 Incident를 생성하고, Redis 기반 cooldown으로 중복 알림을 방지합니다.
+또한 OpenAPI snapshot을 저장한 뒤 이전 버전과 비교해 breaking change를 감지합니다.
 
 ## 무엇을 해결하나
 
-- "배포 후 언제 깨졌는지 모른다"는 운영 리스크
-- 장애를 늦게 발견해 사용자 경험이 무너지는 문제
-- 흩어진 로그/알림으로 원인 파악이 느려지는 문제
-- 팀/플랜 규모에 맞는 운영 가드레일 부재
+- 외부 API 장애를 늦게 알게 되는 문제
+- 동일 장애에 대한 중복 알림 문제
+- OpenAPI 스펙 변경으로 클라이언트가 깨지는 문제
+- 팀/플랜 규모에 맞는 SaaS 운영 가드레일 부재
 
 ## 핵심 기능
 
@@ -16,8 +19,10 @@ APIGuard Backend는 엔드포인트 상태를 지속적으로 점검하고, 이�
 - 프로젝트별 엔드포인트 등록/수정/활성화 토글
 - 스케줄러 기반 주기적 헬스체크 실행
 - 응답 상태/성공률/시간대별 통계 제공
+- 연속 실패 기반 Incident 생성 및 회복 시 resolved 처리
 - 연속 실패 임계치 기반 알림 트리거
 - Redis 쿨다운 기반 중복 알림 방지
+- OpenAPI snapshot 저장 및 breaking change 감지
 - JWT 인증/인가 및 공통 응답 포맷 표준화
 - FREE/PRO 플랜별 기능 제한 정책 적용
 
@@ -26,8 +31,9 @@ APIGuard Backend는 엔드포인트 상태를 지속적으로 점검하고, 이�
 1. 사용자가 워크스페이스와 프로젝트를 생성하고 엔드포인트를 등록합니다.
 2. 스케줄러가 활성 엔드포인트를 주기적으로 검사합니다.
 3. 체크 결과가 누적되며, 통계 API로 가시화 가능한 지표가 만들어집니다.
-4. 실패가 임계치를 넘으면 이메일/Slack 채널로 알림을 보냅니다.
+4. 실패가 임계치를 넘으면 Incident를 생성하고 이메일/Slack 채널로 알림을 보냅니다.
 5. 동일 알림은 Redis 쿨다운으로 중복 발송을 억제합니다.
+6. OpenAPI 스펙 소스는 snapshot을 저장하고 이전 버전과 비교해 breaking change를 기록합니다.
 
 ## 시각화
 
@@ -41,9 +47,12 @@ flowchart LR
     Scheduler[HealthCheckScheduler]
     Checker[HttpChecker/CheckService]
     Alert[AlertService]
+    Incident[IncidentService]
+    Spec[ApiSpecService]
     PG[(PostgreSQL)]
     Redis[(Redis)]
     ExtAPI[Target APIs]
+    OpenAPI[OpenAPI JSON]
     Email[Email Channel]
     Slack[Slack Channel]
 
@@ -54,11 +63,15 @@ flowchart LR
     Scheduler --> Checker
     Checker --> ExtAPI
     Checker --> PG
+    Checker --> Incident
+    Incident --> PG
     Scheduler --> Alert
     Alert --> PG
     Alert --> Redis
     Alert --> Email
     Alert --> Slack
+    Spec --> OpenAPI
+    Spec --> PG
 ```
 
 ### 체크 및 알림 시퀀스
@@ -93,7 +106,9 @@ sequenceDiagram
 - **Layered Domain Architecture**: `controller -> service -> repository` 계층을 기준으로 도메인 책임을 분리했습니다.
 - **Stateful Data + Stateless Auth**: 데이터 일관성은 RDB(PostgreSQL)에서, 인증 상태는 JWT 기반 무상태 방식으로 처리합니다.
 - **Async Check Execution**: 스케줄러는 체크 대상을 병렬 실행해 대량 엔드포인트에서도 처리량을 확보합니다.
+- **Incident State Management**: 체크 결과와 장애 이력을 분리해 운영 관점의 open/resolved 상태를 관리합니다.
 - **Alert Deduplication**: Redis TTL 키로 동일 알림의 재발송을 제한해 알림 폭주를 방지합니다.
+- **Contract Change Detection**: OpenAPI snapshot을 저장하고 path/method 삭제, 필수 parameter/body 추가, response field 삭제/type 변경 같은 breaking change를 비교합니다.
 - **Policy-Driven Subscription**: 플랜 제한은 정책 객체(`PlanLimitPolicy`)로 분리해 기능 확장 시 변경 범위를 최소화합니다.
 
 ## 도메인 구성
@@ -104,7 +119,9 @@ sequenceDiagram
 - `project`: 모니터링 프로젝트 단위 관리
 - `endpoint`: 검사 대상 URL/메서드/주기 관리
 - `check`: 수동 테스트, 체크 히스토리, 통계
+- `incident`: 연속 실패, 성능 저하, 계약 변경 Incident 이력 관리
 - `alert`: 실패 기반 알림 정책 및 채널 관리
+- `apispec`: OpenAPI snapshot, diff, breaking change 관리
 - `subscription/payment`: 플랜 제약 및 결제 상태 관리
 
 ## 플랜 정책

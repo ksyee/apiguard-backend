@@ -10,6 +10,7 @@ import com.apiguard.backend.domain.endpoint.entity.Endpoint;
 import com.apiguard.backend.domain.endpoint.entity.HttpMethod;
 import com.apiguard.backend.domain.endpoint.repository.EndpointRepository;
 import com.apiguard.backend.domain.endpoint.service.EndpointService;
+import com.apiguard.backend.domain.incident.service.IncidentService;
 import com.apiguard.backend.domain.project.entity.Project;
 import com.apiguard.backend.domain.project.service.ProjectService;
 import com.apiguard.backend.domain.user.entity.Role;
@@ -53,6 +54,9 @@ class CheckServiceTest {
 
     @Mock
     private CheckEventPublisher checkEventPublisher;
+
+    @Mock
+    private IncidentService incidentService;
 
     @InjectMocks
     private CheckService checkService;

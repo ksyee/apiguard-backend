@@ -11,6 +11,7 @@ import com.apiguard.backend.domain.endpoint.entity.Endpoint;
 import com.apiguard.backend.domain.endpoint.repository.EndpointRepository;
 import com.apiguard.backend.domain.endpoint.service.EndpointService;
 import com.apiguard.backend.global.exception.EndpointNotFoundException;
+import com.apiguard.backend.domain.incident.service.IncidentService;
 import com.apiguard.backend.domain.project.entity.Project;
 import com.apiguard.backend.domain.project.service.ProjectService;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class CheckService {
     private final EndpointRepository endpointRepository;
     private final ProjectService projectService;
     private final CheckEventPublisher checkEventPublisher;
+    private final IncidentService incidentService;
 
     @Transactional
     public CheckResultResponse testEndpoint(Long endpointId) {
@@ -41,6 +43,7 @@ public class CheckService {
         CheckResult saved = checkResultRepository.save(result);
 
         endpoint.updateLastCheckedAt();
+        incidentService.syncIncidentState(saved);
 
         CheckResultResponse response = CheckResultResponse.from(saved);
 
@@ -60,6 +63,7 @@ public class CheckService {
         CheckResult result = httpCheckerService.check(endpoint);
         CheckResult saved = checkResultRepository.save(result);
         endpoint.updateLastCheckedAt();
+        incidentService.syncIncidentState(saved);
 
         try {
             checkEventPublisher.publish(

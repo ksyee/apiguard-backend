@@ -110,6 +110,22 @@ public class ProjectService {
         return project;
     }
 
+    public Project getProjectWithAccessCheck(Long projectId) {
+        User user = userService.getUserDetail();
+        Project project = projectRepository.findByIdAndDeletedFalse(projectId)
+            .orElseThrow(() -> new ProjectNotFoundException("프로젝트를 찾을 수 없습니다."));
+
+        if (project.getWorkspace() != null) {
+            Long workspaceId = project.getWorkspace().getId();
+            workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, user.getId())
+                .orElseThrow(() -> new ForbiddenException("해당 프로젝트에 대한 권한이 없습니다."));
+        } else if (project.getUser() == null || !project.getUser().getId().equals(user.getId())) {
+            throw new ForbiddenException("해당 프로젝트에 대한 권한이 없습니다.");
+        }
+
+        return project;
+    }
+
     public Project getProjectWithMemberCheck(Long projectId) {
         User user = userService.getUserDetail();
         Project project = projectRepository.findByIdAndDeletedFalse(projectId)
