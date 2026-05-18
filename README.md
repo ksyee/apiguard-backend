@@ -1,17 +1,29 @@
 # APIGuard Backend
 
-APIGuard는 외부 API 의존성이 있는 서비스 팀을 위한 **API Reliability & Change Detection SaaS**입니다.
+APIGuard는 외부 API 의존성이 있는 서비스 팀을 위한 **API Reliability & Contract Change Detection SaaS**입니다.
 
 등록된 API Endpoint를 주기적으로 확인하고, HTTP 상태와 응답 시간을 기록합니다.
 연속 실패가 발생하면 Incident를 생성하고, Redis 기반 cooldown으로 중복 알림을 방지합니다.
 또한 OpenAPI snapshot을 저장한 뒤 이전 버전과 비교해 breaking change를 감지합니다.
 
-## 무엇을 해결하나
+## Problem
+
+서비스는 점점 더 많은 외부 API에 의존합니다. 외부 API 장애, 응답 지연, 계약 변경은 내부 코드 변경 없이도 사용자 장애로 이어질 수 있습니다.
+
+APIGuard는 외부 API 상태를 주기적으로 검사하고, 장애 이력과 OpenAPI 계약 변경 이력을 함께 관리하는 개발팀용 API Reliability SaaS입니다.
 
 - 외부 API 장애를 늦게 알게 되는 문제
 - 동일 장애에 대한 중복 알림 문제
 - OpenAPI 스펙 변경으로 클라이언트가 깨지는 문제
 - 팀/플랜 규모에 맞는 SaaS 운영 가드레일 부재
+
+## Product Positioning
+
+ApiGuard라는 이름은 API 운영 안정성을 지킨다는 의미입니다. 이 프로젝트는 취약점 스캐너, WAF, API Gateway가 아니라 **외부 API 장애와 breaking change를 조기에 감지하는 Reliability 도구**로 설계했습니다.
+
+한 줄로 설명하면 다음과 같습니다.
+
+> 외부 API 의존성이 있는 개발팀을 위한 API 장애·계약 변경 감지 SaaS
 
 ## 핵심 기능
 
@@ -34,6 +46,15 @@ APIGuard는 외부 API 의존성이 있는 서비스 팀을 위한 **API Reliabi
 4. 실패가 임계치를 넘으면 Incident를 생성하고 이메일/Slack 채널로 알림을 보냅니다.
 5. 동일 알림은 Redis 쿨다운으로 중복 발송을 억제합니다.
 6. OpenAPI 스펙 소스는 snapshot을 저장하고 이전 버전과 비교해 breaking change를 기록합니다.
+
+## Key Scenarios
+
+1. 외부 API Endpoint 등록
+2. 스케줄러 기반 병렬 상태 체크
+3. 연속 실패 발생 시 Incident 생성
+4. Redis cooldown으로 중복 알림 방지
+5. OpenAPI snapshot 비교
+6. Breaking Change 감지 및 계약 변경 이력 관리
 
 ## 시각화
 
@@ -116,7 +137,7 @@ sequenceDiagram
 - `auth`: 로그인, 토큰 재발급, 로그아웃
 - `user`: 회원가입, 내 정보 조회/수정, 비밀번호 변경, 탈퇴
 - `workspace`: 워크스페이스/멤버/권한 관리
-- `project`: 모니터링 프로젝트 단위 관리
+- `project`: 외부 API 의존성 묶음 관리
 - `endpoint`: 검사 대상 URL/메서드/주기 관리
 - `check`: 수동 테스트, 체크 히스토리, 통계
 - `incident`: 연속 실패, 성능 저하, 계약 변경 Incident 이력 관리
@@ -225,14 +246,14 @@ docker compose -f docker-compose.server.yml up -d --build
 
 - **체크 정확성**: 엔드포인트별 `checkInterval`과 `lastCheckedAt` 기반으로 점검 시점을 계산합니다.
 - **알림 신호 품질**: 단일 실패가 아닌 연속 실패 임계치로 알림을 트리거해 오탐을 줄입니다.
+- **계약 안정성**: OpenAPI snapshot을 비교해 API가 살아 있어도 클라이언트를 깨뜨릴 수 있는 breaking change를 별도 이력으로 남깁니다.
 - **보안 기본값**: CSRF/세션 기반 인증을 비활성화하고, 인증 필터 체인을 JWT 중심으로 구성합니다.
 - **확장 여지**: 알림 채널은 `NotificationService` 구현 추가로 확장 가능합니다.
 - **관측 가능성**: 헬스체크 시작/완료 및 실패 로그를 남겨 운영 중 추적 가능성을 확보합니다.
 
 ## 프로젝트 철학
 
-이 프로젝트는 "헬스체크 도구"를 넘어서,  
-서비스 신뢰성을 코드 레벨에서 관리 가능한 운영 시스템으로 만드는 것을 목표로 합니다.
+이 프로젝트는 "헬스체크 도구"를 넘어서, 외부 API 장애와 계약 변경을 개발팀이 운영 가능한 데이터로 관리하는 것을 목표로 합니다.
 
 ## 문서
 

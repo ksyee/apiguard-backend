@@ -1,5 +1,8 @@
 # APIGuard Backend API Specification
 
+APIGuard는 외부 API 의존성이 있는 개발팀을 위한 **API Reliability & Contract Change Detection SaaS**입니다.
+이 API는 외부 API 장애/응답 지연 감지, 연속 실패 기반 Incident 관리, Redis cooldown 기반 알림 제어, OpenAPI snapshot 비교를 통한 breaking change 감지를 지원합니다.
+
 ## 1) Common
 
 ### Base URL
@@ -56,7 +59,7 @@ All endpoints return `ApiResponse<T>`.
 - `IncidentType`: `AVAILABILITY | PERFORMANCE | CONTRACT_CHANGE`
 - `BreakingChangeRule`: `PATH_REMOVED | METHOD_REMOVED | REQUIRED_PARAMETER_ADDED | REQUIRED_REQUEST_BODY_ADDED | REQUEST_BODY_REQUIRED_FIELD_ADDED | RESPONSE_FIELD_REMOVED | RESPONSE_FIELD_TYPE_CHANGED`
 - `WorkspaceRole`: `OWNER | ADMIN | MEMBER | VIEWER`
-- `PaymentStatus`: `PENDING | SUCCESS | FAILED`
+- `PaymentStatus`: `PENDING | SUCCESS | FAILED | CANCELLED`
 
 ---
 

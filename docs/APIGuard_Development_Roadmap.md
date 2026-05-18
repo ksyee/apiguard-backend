@@ -1,8 +1,9 @@
-# APIGuard - API 모니터링 도구 개발 로드맵
+# APIGuard - API Reliability & Contract Change Detection SaaS 개발 로드맵
 
 ## 📋 프로젝트 개요
 
 **프로젝트명**: APIGuard  
+**포지셔닝**: 외부 API 의존성이 있는 개발팀을 위한 API 장애·계약 변경 감지 SaaS
 **목표**: 3개월 내 MVP 완성 및 배포  
 **일일 작업 시간**: 평일 3시간, 주말 6시간  
 **총 예상 시간**: 220~280시간
@@ -11,11 +12,20 @@
 
 ## 🎯 핵심 목표
 
-1. ✅ API 엔드포인트를 등록하고 주기적으로 헬스체크
-2. ✅ 응답 시간, 상태 코드, 성공률 등 통계 제공
-3. ✅ 장애 발생 시 이메일/Slack 알림
-4. ✅ 실시간 대시보드로 모니터링 상태 시각화
-5. ✅ 실제 배포 및 본인 프로젝트에 사용
+1. ✅ 외부 API Endpoint를 등록하고 주기적으로 상태/응답 지연 검사
+2. ✅ 연속 실패 기준으로 Incident 생성 및 회복 시 resolved 처리
+3. ✅ Redis cooldown으로 동일 장애에 대한 중복 알림 억제
+4. ✅ OpenAPI snapshot 비교로 path/method/required field 변경 등 Breaking Change 감지
+5. ✅ Workspace RBAC, 플랜 제한, 결제 흐름을 포함한 SaaS 운영 가드레일 구현
+
+---
+
+## 포지셔닝 원칙
+
+- APIGuard는 단순 API 상태 체크 앱이 아니라 **API Reliability & Contract Change Detection SaaS**입니다.
+- 핵심 문제는 Security가 아니라 외부 API 장애, 응답 지연, 계약 변경으로 인한 서비스 불안정입니다.
+- `ApiGuard`라는 이름은 API 운영 안정성을 지킨다는 의미이며, 취약점 스캐너/WAF/API Gateway로 설명하지 않습니다.
+- 포트폴리오 설명은 `장애 감지`, `알림 피로도 제어`, `API 계약 변경 감지` 3개 메시지를 중심으로 구성합니다.
 
 ---
 
@@ -56,10 +66,10 @@
 
 ## 📅 12주 개발 일정
 
-### Week 1: 설계 및 환경 구축 (10~15h)
+### Week 1: Reliability SaaS 설계 및 환경 구축 (10~15h)
 
 #### 목표
-- 프로젝트 요구사항 정리
+- Reliability & Contract Change Detection 중심 프로젝트 요구사항 정리
 - ERD 설계
 - API 명세서 작성
 - 개발 환경 세팅
@@ -67,7 +77,7 @@
 #### 작업 리스트
 
 **Day 1 (3h)**: 요구사항 정의
-- [ ] 기능 목록 작성 (MVP vs 2차)
+- [ ] 기능 목록 작성 (MVP vs 2차, Reliability/Contract Detection 기준)
 - [ ] 유저 스토리 작성 (5~8개)
 - [ ] 화면 구성 스케치 (손그림 OK)
 
@@ -235,7 +245,7 @@
 
 ---
 
-### Week 5: 스케줄러 구현 (15~18h)
+### Week 5: Reliability 체크 스케줄러 구현 (15~18h)
 
 #### 목표
 - Spring Scheduler로 자동 헬스체크 구현
@@ -365,7 +375,7 @@
 
 ---
 
-### Week 8: 프론트엔드 기본 구조 (12~15h)
+### Week 8: SaaS 운영 콘솔 프론트엔드 기본 구조 (12~15h)
 
 #### 목표
 - Next.js 프로젝트 초기 세팅
@@ -410,7 +420,7 @@
 
 ---
 
-### Week 9: 대시보드 및 목록 화면 (14~16h)
+### Week 9: Reliability 대시보드 및 목록 화면 (14~16h)
 
 #### 목표
 - 메인 대시보드 구현
@@ -674,7 +684,7 @@
 
 ### Week 12 (3개월차)
 - ✅ 배포 완료
-- ✅ 실제 본인 프로젝트 모니터링 중
+- ✅ 실제 외부 API 의존성의 장애·계약 변경 감지에 사용 중
 - ✅ 포트폴리오 등록
 
 ---
@@ -728,6 +738,8 @@
 5. API 호출 로그 상세 조회
 6. Slack Bot 연동
 7. 모바일 앱 (React Native)
+8. OpenAPI diff rule 확장 및 false positive 제어
+9. 알림 피로도 분석과 채널별 cooldown 정책
 
 ### 포트폴리오 활용
 - 이력서에 프로젝트 링크 포함
@@ -737,6 +749,19 @@
 
 ---
 
+## 진행 기록
+
+### 2026-05-18
+
+- 프로젝트 포지셔닝을 `API Reliability & Contract Change Detection SaaS`로 정리했습니다.
+- README에 Problem, Product Positioning, Key Scenarios를 추가해 단순 API 모니터링/보안 서비스가 아니라 외부 API 장애·계약 변경 감지 SaaS로 설명되도록 보완했습니다.
+- 개발 로드맵의 오래된 `API 모니터링 도구` 표현을 Reliability, Incident lifecycle, Redis cooldown, OpenAPI breaking change 중심으로 수정했습니다.
+- Backend API Spec 상단에 제품 목적을 추가하고 `PaymentStatus` enum 문서에 `CANCELLED`를 반영했습니다.
+- 검증: `GRADLE_USER_HOME=/home/ksy/wsl-workspace/apiguard/apiguard-backend/.gradle-local ./gradlew compileJava --no-daemon` 통과.
+- 남은 리스크: 전체 `./gradlew test`는 로컬 PostgreSQL `localhost:15432` 미기동 시 `BackendApplicationTests.contextLoads()`에서 실패하므로 test profile 또는 Testcontainers 분리가 필요합니다.
+
+---
+
 **작성일**: 2024-11-06  
 **예상 완료일**: 2025-01-29 (12주 후)  
-**마지막 업데이트**: 2024-11-06
+**마지막 업데이트**: 2026-05-18
