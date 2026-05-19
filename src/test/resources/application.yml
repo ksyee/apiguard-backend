@@ -1,0 +1,46 @@
+spring:
+  datasource:
+    url: "jdbc:h2:mem:apiguard;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;INIT=CREATE DOMAIN IF NOT EXISTS JSONB AS JSON"
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        format_sql: false
+        show_sql: false
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  mail:
+    host: localhost
+    port: 1025
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+
+jwt:
+  secret: **REMOVED-FROM-HISTORY**
+  access-expiration: 3600000
+  refresh-expiration: 1209600000
+
+toss:
+  payments:
+    secret-key: test_sk_local
+    client-key: test_ck_local
+
+security:
+  whitelist:
+    - /auth/**
+    - /users/signup
+    - /health
+    - /error
+  cors:
+    allowed-origins:
+      - http://localhost:3000

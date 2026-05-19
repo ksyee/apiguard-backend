@@ -758,7 +758,14 @@
 - 개발 로드맵의 오래된 `API 모니터링 도구` 표현을 Reliability, Incident lifecycle, Redis cooldown, OpenAPI breaking change 중심으로 수정했습니다.
 - Backend API Spec 상단에 제품 목적을 추가하고 `PaymentStatus` enum 문서에 `CANCELLED`를 반영했습니다.
 - 검증: `GRADLE_USER_HOME=/home/ksy/wsl-workspace/apiguard/apiguard-backend/.gradle-local ./gradlew compileJava --no-daemon` 통과.
-- 남은 리스크: 전체 `./gradlew test`는 로컬 PostgreSQL `localhost:15432` 미기동 시 `BackendApplicationTests.contextLoads()`에서 실패하므로 test profile 또는 Testcontainers 분리가 필요합니다.
+- 당시 남은 리스크: 전체 `./gradlew test`는 로컬 PostgreSQL `localhost:15432` 미기동 시 `BackendApplicationTests.contextLoads()`에서 실패하므로 test profile 또는 Testcontainers 분리가 필요했습니다. 이 항목은 2026-05-19에 H2 테스트 설정으로 해결했습니다.
+
+### 2026-05-19
+
+- 테스트 런타임에 H2 인메모리 DB를 추가하고, `src/test/resources/application.yml`에서 테스트 전용 datasource/JWT/Toss/Security 설정을 사용하도록 분리했습니다.
+- H2 PostgreSQL 호환 모드와 `JSONB` 도메인을 설정해 `Endpoint.headers`의 PostgreSQL `jsonb` 컬럼 정의가 테스트 DDL에서도 생성되도록 했습니다.
+- PR CI에서 불필요해진 PostgreSQL/Redis 서비스 컨테이너를 제거했습니다.
+- 검증: `GRADLE_USER_HOME=/home/ksy/wsl-workspace/apiguard/apiguard-backend/.gradle-local ./gradlew test --no-daemon` 통과.
 
 ---
 

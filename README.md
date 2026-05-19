@@ -209,7 +209,7 @@ docker compose -f docker-compose.server.yml up -d --build
 
 - `.github/workflows/pr-ci.yml`
 - `main` 대상으로 PR이 열리거나 갱신되면 실행됩니다.
-- PostgreSQL, Redis 서비스를 띄운 뒤 `./gradlew test bootJar --no-daemon`을 수행합니다.
+- 테스트는 H2 인메모리 DB를 사용하므로 별도 PostgreSQL/Redis 서비스 없이 `./gradlew test bootJar --no-daemon`을 수행합니다.
 
 ### Main Deploy
 
