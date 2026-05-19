@@ -16,16 +16,16 @@ services:
       SPRING_PROFILES_ACTIVE: prod
       DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-apiguard}
       DB_USERNAME: ${POSTGRES_USER:-apiguard}
-      DB_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       MAIL_HOST: ${MAIL_HOST}
       MAIL_PORT: ${MAIL_PORT}
       MAIL_USERNAME: ${MAIL_USERNAME}
-      MAIL_PASSWORD: ${MAIL_PASSWORD}
-      TOSS_SECRET_KEY: ${TOSS_SECRET_KEY}
-      TOSS_CLIENT_KEY: ${TOSS_CLIENT_KEY}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:?MAIL_PASSWORD is required}
+      TOSS_SECRET_KEY: ${TOSS_SECRET_KEY:?TOSS_SECRET_KEY is required}
+      TOSS_CLIENT_KEY: ${TOSS_CLIENT_KEY:?TOSS_CLIENT_KEY is required}
     networks:
       - apiguard-network
 
@@ -36,7 +36,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-apiguard}
       POSTGRES_USER: ${POSTGRES_USER:-apiguard}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
       - postgres_data:/var/lib/postgresql
     healthcheck:

@@ -2,8 +2,8 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:15432/apiguard
     driver-class-name: org.postgresql.Driver
-    username: apiguard
-    password: apiguard1234
+    username: ${DB_USERNAME:apiguard}
+    password: ${DB_PASSWORD:apiguard-dev-password}
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
@@ -26,12 +26,12 @@ spring:
           starttls:
             enable: false
 jwt:
-  secret: **REMOVED-FROM-HISTORY**
+  secret: ${JWT_SECRET:local-dev-only-jwt-secret-at-least-32-bytes-change-me}
 
 toss:
   payments:
-    secret-key: **REMOVED-FROM-HISTORY**
-    client-key: **REMOVED-FROM-HISTORY**
+    secret-key: ${TOSS_SECRET_KEY:**REMOVED-FROM-HISTORY**}
+    client-key: ${TOSS_CLIENT_KEY:**REMOVED-FROM-HISTORY**}
 
 security:
   whitelist:

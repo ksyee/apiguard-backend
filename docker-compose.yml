@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_DB: apiguard
       POSTGRES_USER: apiguard
-      POSTGRES_PASSWORD: apiguard1234
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-apiguard-dev-password}
     volumes:
       - ./docker/db/data:/var/lib/postgresql # 컨테이너를 지워도 해당 경로에 데이터 유지
     networks:

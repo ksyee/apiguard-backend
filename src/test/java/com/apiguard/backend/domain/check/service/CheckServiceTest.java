@@ -109,7 +109,7 @@ class CheckServiceTest {
             .checkedAt(LocalDateTime.now())
             .build();
 
-        given(endpointService.getEndpointWithOwnerCheck(1L)).willReturn(endpoint);
+        given(endpointService.getEndpointWithWriteCheck(1L)).willReturn(endpoint);
         given(httpCheckerService.check(endpoint)).willReturn(checkResult);
         given(checkResultRepository.save(any(CheckResult.class))).willReturn(checkResult);
 
@@ -128,7 +128,7 @@ class CheckServiceTest {
     @DisplayName("존재하지 않는 엔드포인트 테스트 시 404 예외")
     void testEndpoint_notFound() {
         // given
-        given(endpointService.getEndpointWithOwnerCheck(999L))
+        given(endpointService.getEndpointWithWriteCheck(999L))
             .willThrow(new EndpointNotFoundException("엔드포인트를 찾을 수 없습니다."));
 
         // when & then
@@ -145,7 +145,7 @@ class CheckServiceTest {
         Project project = createProject(1L, user);
         Endpoint endpoint = createEndpoint(1L, project);
 
-        given(endpointService.getEndpointWithOwnerCheck(1L)).willReturn(endpoint);
+        given(endpointService.getEndpointWithAccessCheck(1L)).willReturn(endpoint);
         given(checkResultRepository.countByEndpointIdAndCheckedAtAfter(eq(1L), any(LocalDateTime.class)))
             .willReturn(10L);
         given(checkResultRepository.countByEndpointIdAndStatusAndCheckedAtAfter(eq(1L), eq(CheckStatus.SUCCESS), any(LocalDateTime.class)))
@@ -191,7 +191,7 @@ class CheckServiceTest {
             .checkedAt(LocalDateTime.now())
             .build();
 
-        given(projectService.getProjectWithOwnerCheck(1L)).willReturn(project);
+        given(projectService.getProjectWithAccessCheck(1L)).willReturn(project);
         given(endpointRepository.findByProjectIdAndDeletedFalse(1L)).willReturn(List.of(endpoint1, endpoint2));
         given(checkResultRepository.findByEndpointIdOrderByCheckedAtDesc(eq(1L), any(PageRequest.class)))
             .willReturn(List.of(successResult));
@@ -234,7 +234,7 @@ class CheckServiceTest {
             .checkedAt(LocalDateTime.now().minusMinutes(5))
             .build();
 
-        given(endpointService.getEndpointWithOwnerCheck(1L)).willReturn(endpoint);
+        given(endpointService.getEndpointWithAccessCheck(1L)).willReturn(endpoint);
         given(checkResultRepository.findByEndpointIdOrderByCheckedAtDesc(eq(1L), any(PageRequest.class)))
             .willReturn(List.of(result1, result2));
 

@@ -380,20 +380,20 @@ Request
 `GET /workspaces/{workspaceId}/projects` (auth required, workspace member)
 
 ### 6.3 Get Project
-`GET /projects/{id}` (auth required, project owner check)
+`GET /projects/{id}` (auth required, workspace member or personal project owner)
 
 ### 6.4 Update Project
-`PATCH /projects/{id}` (auth required, workspace member except `VIEWER`)
+`PATCH /projects/{id}` (auth required, workspace `MEMBER` or above; personal project owner)
 
 ### 6.5 Delete Project
-`DELETE /projects/{id}` (auth required, project owner check)
+`DELETE /projects/{id}` (auth required, workspace `ADMIN` or above; personal project owner)
 
 ---
 
 ## 7) Endpoint
 
 ### 7.1 Create Endpoint
-`POST /projects/{projectId}/endpoints` (auth required, project owner check)
+`POST /projects/{projectId}/endpoints` (auth required, workspace `MEMBER` or above; personal project owner)
 
 Request
 ```json
@@ -415,19 +415,19 @@ Behavior
   - min check interval: FREE 300s / PRO 60s
 
 ### 7.2 List Endpoints
-`GET /projects/{projectId}/endpoints` (auth required, project owner check)
+`GET /projects/{projectId}/endpoints` (auth required, workspace member or personal project owner)
 
 ### 7.3 Get Endpoint
-`GET /endpoints/{id}` (auth required)
+`GET /endpoints/{id}` (auth required, workspace member or personal project owner)
 
 ### 7.4 Update Endpoint
-`PUT /endpoints/{id}` (auth required)
+`PUT /endpoints/{id}` (auth required, workspace `MEMBER` or above; personal project owner)
 
 ### 7.5 Delete Endpoint
-`DELETE /endpoints/{id}` (auth required)
+`DELETE /endpoints/{id}` (auth required, workspace `ADMIN` or above; personal project owner)
 
 ### 7.6 Toggle Endpoint
-`PATCH /endpoints/{id}/toggle` (auth required)
+`PATCH /endpoints/{id}/toggle` (auth required, workspace `MEMBER` or above; personal project owner)
 
 Endpoint response model
 ```json
@@ -451,7 +451,7 @@ Endpoint response model
 ## 8) Alert
 
 ### 8.1 Create Alert
-`POST /endpoints/{endpointId}/alerts` (auth required)
+`POST /endpoints/{endpointId}/alerts` (auth required, workspace `MEMBER` or above; personal project owner)
 
 Request
 ```json
@@ -468,16 +468,16 @@ Behavior
 - Duplicate alerts are suppressed by Redis cooldown (30 minutes)
 
 ### 8.2 List Alerts
-`GET /endpoints/{endpointId}/alerts` (auth required)
+`GET /endpoints/{endpointId}/alerts` (auth required, workspace member or personal project owner)
 
 ### 8.3 Update Alert
-`PUT /alerts/{id}` (auth required)
+`PUT /alerts/{id}` (auth required, workspace `MEMBER` or above; personal project owner)
 
 ### 8.4 Delete Alert
-`DELETE /alerts/{id}` (auth required)
+`DELETE /alerts/{id}` (auth required, workspace `MEMBER` or above; personal project owner)
 
 ### 8.5 Toggle Alert
-`PATCH /alerts/{id}/toggle` (auth required)
+`PATCH /alerts/{id}/toggle` (auth required, workspace `MEMBER` or above; personal project owner)
 
 Alert response model
 ```json
@@ -497,10 +497,10 @@ Alert response model
 ## 9) Check & Stats
 
 ### 9.1 Manual Test Endpoint
-`POST /endpoints/{id}/test` (auth required)
+`POST /endpoints/{id}/test` (auth required, workspace `MEMBER` or above; personal project owner)
 
 ### 9.2 Endpoint Stats (24h)
-`GET /endpoints/{id}/stats` (auth required)
+`GET /endpoints/{id}/stats` (auth required, workspace member or personal project owner)
 
 Response model
 ```json
@@ -514,16 +514,16 @@ Response model
 ```
 
 ### 9.3 Hourly Stats (24h)
-`GET /endpoints/{id}/stats/hourly` (auth required)
+`GET /endpoints/{id}/stats/hourly` (auth required, workspace member or personal project owner)
 
 ### 9.4 Recent Checks
-`GET /endpoints/{id}/checks` (auth required)
+`GET /endpoints/{id}/checks` (auth required, workspace member or personal project owner)
 
 Query params
 - `limit` (default `20`)
 
 ### 9.5 Project Stats
-`GET /projects/{id}/stats` (auth required)
+`GET /projects/{id}/stats` (auth required, workspace member or personal project owner)
 
 Response model
 ```json
@@ -580,7 +580,7 @@ For `CONTRACT_CHANGE` incidents, `endpointId` and `endpointUrl` are `null` becau
 ## 11) OpenAPI Spec Changes
 
 ### 11.1 Create Spec Source
-`POST /projects/{projectId}/spec-sources` (auth required)
+`POST /projects/{projectId}/spec-sources` (auth required, workspace `MEMBER` or above; personal project owner)
 
 Request
 ```json
@@ -591,10 +591,10 @@ Request
 ```
 
 ### 11.2 List Spec Sources
-`GET /projects/{projectId}/spec-sources` (auth required)
+`GET /projects/{projectId}/spec-sources` (auth required, workspace member or personal project owner)
 
 ### 11.3 Check Spec Source
-`POST /spec-sources/{sourceId}/check` (auth required)
+`POST /spec-sources/{sourceId}/check` (auth required, workspace `MEMBER` or above; personal project owner)
 
 Behavior
 - Fetches the current OpenAPI JSON.
@@ -604,10 +604,10 @@ Behavior
 - Creates or updates an open `CONTRACT_CHANGE` incident when breaking changes are detected.
 
 ### 11.4 List Diffs
-`GET /spec-sources/{sourceId}/diffs` (auth required)
+`GET /spec-sources/{sourceId}/diffs` (auth required, workspace member or personal project owner)
 
 ### 11.5 Diff Detail
-`GET /spec-diffs/{diffId}` (auth required)
+`GET /spec-diffs/{diffId}` (auth required, workspace member or personal project owner)
 
 Response model
 ```json

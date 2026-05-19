@@ -56,6 +56,36 @@ ApiGuard라는 이름은 API 운영 안정성을 지킨다는 의미입니다. �
 5. OpenAPI snapshot 비교
 6. Breaking Change 감지 및 계약 변경 이력 관리
 
+## 5분 데모 시나리오
+
+로컬 데모는 운영 배포가 아니라 기능 검증 흐름에 초점을 둡니다.
+
+1. 로컬 인프라를 실행합니다.
+
+```bash
+docker compose up -d db redis
+```
+
+2. 백엔드와 프론트엔드를 각각 실행하고 회원가입/로그인을 진행합니다.
+
+```bash
+./gradlew bootRun --args='--spring.profiles.active=dev'
+```
+
+3. 워크스페이스와 프로젝트를 만들고 실패 응답을 반환하는 엔드포인트를 등록합니다.
+
+```text
+URL: https://httpstat.us/500
+Expected status: 200
+Check interval: 60
+```
+
+4. 수동 체크를 3회 실행해 `AVAILABILITY` Incident가 생성되는지 확인합니다.
+5. 알림 설정을 추가하고 동일 장애를 반복해 Redis cooldown이 중복 발송을 억제하는지 확인합니다.
+6. OpenAPI demo fixture를 사용해 snapshot 저장 후 breaking change 감지를 확인합니다.
+
+자세한 OpenAPI diff 재현 절차와 fixture는 `docs/openapi-breaking-change-demo.md`에 있습니다.
+
 ## 시각화
 
 ### 시스템 아키텍처
@@ -259,3 +289,5 @@ docker compose -f docker-compose.server.yml up -d --build
 
 - 상세 API 명세: `API_SPEC.md`
 - 개발 로드맵: `docs/APIGuard_Development_Roadmap.md`
+- OpenAPI breaking change demo: `docs/openapi-breaking-change-demo.md`
+- Public release checklist: `docs/public-release-checklist.md`

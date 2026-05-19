@@ -144,7 +144,7 @@ public class WorkspaceService {
         WorkspaceMember currentMember = workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, currentUser.getId())
             .orElseThrow(() -> new ForbiddenException("해당 워크스페이스에 대한 권한이 없습니다."));
 
-        if (currentMember.getRole() == WorkspaceRole.MEMBER || currentMember.getRole() == WorkspaceRole.VIEWER) {
+        if (!currentMember.getRole().isAtLeast(WorkspaceRole.ADMIN)) {
             throw new ForbiddenException("멤버 초대는 ADMIN 이상만 가능합니다.");
         }
 
@@ -248,7 +248,7 @@ public class WorkspaceService {
         WorkspaceMember member = workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, user.getId())
             .orElseThrow(() -> new ForbiddenException("해당 워크스페이스에 대한 권한이 없습니다."));
 
-        if (member.getRole() == WorkspaceRole.VIEWER) {
+        if (!member.getRole().isAtLeast(WorkspaceRole.MEMBER)) {
             throw new ForbiddenException("VIEWER는 쓰기 작업을 수행할 수 없습니다.");
         }
     }

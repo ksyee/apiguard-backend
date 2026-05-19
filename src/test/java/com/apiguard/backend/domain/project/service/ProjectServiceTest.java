@@ -8,11 +8,18 @@ import static org.mockito.Mockito.mock;
 
 import com.apiguard.backend.domain.project.dto.CreateProjectRequest;
 import com.apiguard.backend.domain.project.dto.ProjectResponse;
+import com.apiguard.backend.domain.project.dto.UpdateProjectRequest;
 import com.apiguard.backend.domain.project.entity.Project;
 import com.apiguard.backend.domain.project.repository.ProjectRepository;
 import com.apiguard.backend.domain.user.entity.Role;
 import com.apiguard.backend.domain.user.entity.User;
 import com.apiguard.backend.domain.user.service.UserService;
+import com.apiguard.backend.domain.workspace.entity.Workspace;
+import com.apiguard.backend.domain.workspace.entity.WorkspaceMember;
+import com.apiguard.backend.domain.workspace.entity.WorkspaceRole;
+import com.apiguard.backend.domain.workspace.repository.WorkspaceMemberRepository;
+import com.apiguard.backend.domain.workspace.repository.WorkspaceRepository;
+import com.apiguard.backend.domain.workspace.service.WorkspaceService;
 import com.apiguard.backend.global.exception.ForbiddenException;
 import com.apiguard.backend.global.exception.ProjectNotFoundException;
 import java.util.List;
@@ -33,6 +40,15 @@ class ProjectServiceTest {
     @Mock
     private UserService userService;
 
+    @Mock
+    private WorkspaceService workspaceService;
+
+    @Mock
+    private WorkspaceRepository workspaceRepository;
+
+    @Mock
+    private WorkspaceMemberRepository workspaceMemberRepository;
+
     @InjectMocks
     private ProjectService projectService;
 
@@ -52,6 +68,34 @@ class ProjectServiceTest {
             .user(user)
             .name("Test Project")
             .description("Test Description")
+            .build();
+    }
+
+    private Workspace createWorkspace(Long id, User owner) {
+        return Workspace.builder()
+            .id(id)
+            .name("Test Workspace")
+            .slug("test-workspace")
+            .owner(owner)
+            .build();
+    }
+
+    private Project createWorkspaceProject(Long id, User user, Workspace workspace) {
+        return Project.builder()
+            .id(id)
+            .workspace(workspace)
+            .user(user)
+            .name("Workspace Project")
+            .description("Workspace Project Description")
+            .build();
+    }
+
+    private WorkspaceMember createMember(Long id, Workspace workspace, User user, WorkspaceRole role) {
+        return WorkspaceMember.builder()
+            .id(id)
+            .workspace(workspace)
+            .user(user)
+            .role(role)
             .build();
     }
 
@@ -78,6 +122,88 @@ class ProjectServiceTest {
         assertThat(response.id()).isEqualTo(1L);
         assertThat(response.name()).isEqualTo("My Project");
         assertThat(response.description()).isEqualTo("My Description");
+    }
+
+    @Test
+    @DisplayName("워크스페이스 VIEWER도 프로젝트 조회 가능")
+    void getProject_workspaceViewer_canRead() {
+        // given
+        User owner = createUser(1L);
+        User viewer = createUser(2L);
+        Workspace workspace = createWorkspace(1L, owner);
+        Project project = createWorkspaceProject(1L, owner, workspace);
+
+        given(userService.getUserDetail()).willReturn(viewer);
+        given(projectRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(project));
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 2L))
+            .willReturn(Optional.of(createMember(1L, workspace, viewer, WorkspaceRole.VIEWER)));
+
+        // when
+        ProjectResponse response = projectService.getProject(1L);
+
+        // then
+        assertThat(response.id()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("워크스페이스 VIEWER는 프로젝트 수정 불가")
+    void updateProject_workspaceViewer_throwsForbiddenException() {
+        // given
+        User owner = createUser(1L);
+        User viewer = createUser(2L);
+        Workspace workspace = createWorkspace(1L, owner);
+        Project project = createWorkspaceProject(1L, owner, workspace);
+
+        given(userService.getUserDetail()).willReturn(viewer);
+        given(projectRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(project));
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 2L))
+            .willReturn(Optional.of(createMember(1L, workspace, viewer, WorkspaceRole.VIEWER)));
+
+        // when & then
+        assertThatThrownBy(() -> projectService.updateProject(1L, new UpdateProjectRequest("New Name", null)))
+            .isInstanceOf(ForbiddenException.class)
+            .hasMessage("VIEWER는 쓰기 작업을 수행할 수 없습니다.");
+    }
+
+    @Test
+    @DisplayName("워크스페이스 MEMBER는 프로젝트 삭제 불가")
+    void deleteProject_workspaceMember_throwsForbiddenException() {
+        // given
+        User owner = createUser(1L);
+        User member = createUser(2L);
+        Workspace workspace = createWorkspace(1L, owner);
+        Project project = createWorkspaceProject(1L, owner, workspace);
+
+        given(userService.getUserDetail()).willReturn(member);
+        given(projectRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(project));
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 2L))
+            .willReturn(Optional.of(createMember(1L, workspace, member, WorkspaceRole.MEMBER)));
+
+        // when & then
+        assertThatThrownBy(() -> projectService.deleteProject(1L))
+            .isInstanceOf(ForbiddenException.class)
+            .hasMessage("프로젝트 삭제는 ADMIN 이상만 가능합니다.");
+    }
+
+    @Test
+    @DisplayName("워크스페이스 ADMIN은 프로젝트 삭제 가능")
+    void deleteProject_workspaceAdmin_success() {
+        // given
+        User owner = createUser(1L);
+        User admin = createUser(2L);
+        Workspace workspace = createWorkspace(1L, owner);
+        Project project = createWorkspaceProject(1L, owner, workspace);
+
+        given(userService.getUserDetail()).willReturn(admin);
+        given(projectRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(project));
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 2L))
+            .willReturn(Optional.of(createMember(1L, workspace, admin, WorkspaceRole.ADMIN)));
+
+        // when
+        projectService.deleteProject(1L);
+
+        // then
+        assertThat(project.isDeleted()).isTrue();
     }
 
     @Test

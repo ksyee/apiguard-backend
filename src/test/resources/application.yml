@@ -32,8 +32,8 @@ jwt:
 
 toss:
   payments:
-    secret-key: test_sk_local
-    client-key: test_ck_local
+    secret-key: **REMOVED-FROM-HISTORY**
+    client-key: **REMOVED-FROM-HISTORY**
 
 security:
   whitelist:

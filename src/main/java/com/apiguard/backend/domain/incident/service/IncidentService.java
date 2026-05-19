@@ -60,7 +60,7 @@ public class IncidentService {
     }
 
     public List<IncidentResponse> getEndpointIncidents(Long endpointId) {
-        endpointService.getEndpointWithOwnerCheck(endpointId);
+        endpointService.getEndpointWithAccessCheck(endpointId);
         return incidentRepository.findByEndpointIdOrderByStartedAtDesc(endpointId).stream()
             .map(IncidentResponse::from)
             .toList();

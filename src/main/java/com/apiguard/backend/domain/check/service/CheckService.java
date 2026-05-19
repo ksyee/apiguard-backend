@@ -37,7 +37,7 @@ public class CheckService {
 
     @Transactional
     public CheckResultResponse testEndpoint(Long endpointId) {
-        Endpoint endpoint = endpointService.getEndpointWithOwnerCheck(endpointId);
+        Endpoint endpoint = endpointService.getEndpointWithWriteCheck(endpointId);
 
         CheckResult result = httpCheckerService.check(endpoint);
         CheckResult saved = checkResultRepository.save(result);
@@ -76,7 +76,7 @@ public class CheckService {
     }
 
     public EndpointStatsResponse getEndpointStats(Long endpointId) {
-        endpointService.getEndpointWithOwnerCheck(endpointId);
+        endpointService.getEndpointWithAccessCheck(endpointId);
 
         LocalDateTime since = LocalDateTime.now().minusHours(24);
         long totalChecks = checkResultRepository.countByEndpointIdAndCheckedAtAfter(endpointId, since);
@@ -94,7 +94,7 @@ public class CheckService {
     }
 
     public List<HourlyStatResponse> getHourlyStats(Long endpointId) {
-        endpointService.getEndpointWithOwnerCheck(endpointId);
+        endpointService.getEndpointWithAccessCheck(endpointId);
 
         LocalDateTime since = LocalDateTime.now().minusHours(24);
         List<Object[]> rows = checkResultRepository.findHourlyStatsByEndpointId(endpointId, since);
@@ -110,7 +110,7 @@ public class CheckService {
     }
 
     public ProjectStatsResponse getProjectStats(Long projectId) {
-        Project project = projectService.getProjectWithOwnerCheck(projectId);
+        Project project = projectService.getProjectWithAccessCheck(projectId);
 
         List<Endpoint> endpoints = endpointRepository.findByProjectIdAndDeletedFalse(project.getId());
         long totalEndpoints = endpoints.size();
@@ -141,7 +141,7 @@ public class CheckService {
     }
 
     public List<CheckResultResponse> getRecentChecks(Long endpointId, int limit) {
-        endpointService.getEndpointWithOwnerCheck(endpointId);
+        endpointService.getEndpointWithAccessCheck(endpointId);
 
         List<CheckResult> results = checkResultRepository.findByEndpointIdOrderByCheckedAtDesc(endpointId, PageRequest.of(0, limit));
         return results.stream()

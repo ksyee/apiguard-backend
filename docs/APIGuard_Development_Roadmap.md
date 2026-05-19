@@ -766,6 +766,9 @@
 - H2 PostgreSQL 호환 모드와 `JSONB` 도메인을 설정해 `Endpoint.headers`의 PostgreSQL `jsonb` 컬럼 정의가 테스트 DDL에서도 생성되도록 했습니다.
 - PR CI에서 불필요해진 PostgreSQL/Redis 서비스 컨테이너를 제거했습니다.
 - 검증: `GRADLE_USER_HOME=/home/ksy/wsl-workspace/apiguard/apiguard-backend/.gradle-local ./gradlew test --no-daemon` 통과.
+- 백엔드 RBAC를 읽기/쓰기/삭제 권한으로 분리해 Workspace role 정책과 프론트 권한 정책을 맞췄습니다.
+- dev/test 설정의 고정 키를 dummy/env 기본값으로 정리하고, public release checklist와 OpenAPI breaking change demo fixture를 추가했습니다.
+- 검증: `GRADLE_USER_HOME=/home/ksy/wsl-workspace/apiguard/apiguard-backend/.gradle-local ./gradlew test bootJar --no-daemon` 통과.
 
 ---
 

@@ -12,7 +12,6 @@ import com.apiguard.backend.domain.endpoint.entity.Endpoint;
 import com.apiguard.backend.domain.endpoint.service.EndpointService;
 import com.apiguard.backend.domain.subscription.service.SubscriptionService;
 import com.apiguard.backend.global.exception.AlertNotFoundException;
-import com.apiguard.backend.global.exception.ForbiddenException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -41,7 +40,7 @@ public class AlertService {
 
     @Transactional
     public AlertResponse createAlert(Long endpointId, CreateAlertRequest request) {
-        Endpoint endpoint = endpointService.getEndpointWithOwnerCheck(endpointId);
+        Endpoint endpoint = endpointService.getEndpointWithWriteCheck(endpointId);
 
         if (endpoint.getProject().getWorkspace() != null) {
             Long workspaceId = endpoint.getProject().getWorkspace().getId();
@@ -60,7 +59,7 @@ public class AlertService {
     }
 
     public List<AlertResponse> getAlerts(Long endpointId) {
-        endpointService.getEndpointWithOwnerCheck(endpointId);
+        endpointService.getEndpointWithAccessCheck(endpointId);
         return alertConfigRepository.findByEndpointIdAndDeletedFalse(endpointId).stream()
             .map(AlertResponse::from)
             .toList();
@@ -68,20 +67,20 @@ public class AlertService {
 
     @Transactional
     public AlertResponse updateAlert(Long alertId, UpdateAlertRequest request) {
-        AlertConfig alertConfig = getAlertWithOwnerCheck(alertId);
+        AlertConfig alertConfig = getAlertWithWriteCheck(alertId);
         alertConfig.update(request.alertType(), request.target(), request.threshold());
         return AlertResponse.from(alertConfig);
     }
 
     @Transactional
     public void deleteAlert(Long alertId) {
-        AlertConfig alertConfig = getAlertWithOwnerCheck(alertId);
+        AlertConfig alertConfig = getAlertWithWriteCheck(alertId);
         alertConfig.softDelete();
     }
 
     @Transactional
     public AlertResponse toggleAlert(Long alertId) {
-        AlertConfig alertConfig = getAlertWithOwnerCheck(alertId);
+        AlertConfig alertConfig = getAlertWithWriteCheck(alertId);
         alertConfig.toggleActive();
         return AlertResponse.from(alertConfig);
     }
@@ -150,7 +149,7 @@ public class AlertService {
         }
     }
 
-    private AlertConfig getAlertWithOwnerCheck(Long alertId) {
+    private AlertConfig getAlertWithWriteCheck(Long alertId) {
         AlertConfig alertConfig = alertConfigRepository.findByIdAndDeletedFalse(alertId)
             .orElseThrow(() -> new AlertNotFoundException("알림 설정을 찾을 수 없습니다."));
 
@@ -159,7 +158,7 @@ public class AlertService {
             throw new AlertNotFoundException("알림 설정을 찾을 수 없습니다.");
         }
 
-        endpointService.getEndpointWithOwnerCheck(endpoint.getId());
+        endpointService.getEndpointWithWriteCheck(endpoint.getId());
         return alertConfig;
     }
 }

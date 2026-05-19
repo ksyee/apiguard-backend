@@ -13,9 +13,14 @@ import com.apiguard.backend.domain.endpoint.entity.HttpMethod;
 import com.apiguard.backend.domain.endpoint.repository.EndpointRepository;
 import com.apiguard.backend.domain.project.entity.Project;
 import com.apiguard.backend.domain.project.service.ProjectService;
+import com.apiguard.backend.domain.subscription.service.SubscriptionService;
 import com.apiguard.backend.domain.user.entity.Role;
 import com.apiguard.backend.domain.user.entity.User;
 import com.apiguard.backend.domain.user.service.UserService;
+import com.apiguard.backend.domain.workspace.entity.Workspace;
+import com.apiguard.backend.domain.workspace.entity.WorkspaceMember;
+import com.apiguard.backend.domain.workspace.entity.WorkspaceRole;
+import com.apiguard.backend.domain.workspace.repository.WorkspaceMemberRepository;
 import com.apiguard.backend.global.exception.EndpointNotFoundException;
 import com.apiguard.backend.global.exception.ForbiddenException;
 import com.apiguard.backend.global.exception.ProjectNotFoundException;
@@ -41,6 +46,12 @@ class EndpointServiceTest {
     @Mock
     private UserService userService;
 
+    @Mock
+    private SubscriptionService subscriptionService;
+
+    @Mock
+    private WorkspaceMemberRepository workspaceMemberRepository;
+
     @InjectMocks
     private EndpointService endpointService;
 
@@ -60,6 +71,34 @@ class EndpointServiceTest {
             .user(user)
             .name("Test Project")
             .description("Test Description")
+            .build();
+    }
+
+    private Workspace createWorkspace(Long id, User owner) {
+        return Workspace.builder()
+            .id(id)
+            .name("Test Workspace")
+            .slug("test-workspace")
+            .owner(owner)
+            .build();
+    }
+
+    private Project createWorkspaceProject(Long id, User user, Workspace workspace) {
+        return Project.builder()
+            .id(id)
+            .workspace(workspace)
+            .user(user)
+            .name("Workspace Project")
+            .description("Workspace Project Description")
+            .build();
+    }
+
+    private WorkspaceMember createMember(Long id, Workspace workspace, User user, WorkspaceRole role) {
+        return WorkspaceMember.builder()
+            .id(id)
+            .workspace(workspace)
+            .user(user)
+            .role(role)
             .build();
     }
 
@@ -83,7 +122,7 @@ class EndpointServiceTest {
         User user = createUser(1L);
         Project project = createProject(1L, user);
 
-        given(projectService.getProjectWithOwnerCheck(1L)).willReturn(project);
+        given(projectService.getProjectWithMemberCheck(1L)).willReturn(project);
 
         CreateEndpointRequest request = new CreateEndpointRequest(
             "https://api.example.com/health", HttpMethod.GET, Map.of("Authorization", "Bearer token"), null, 200, 60
@@ -103,13 +142,103 @@ class EndpointServiceTest {
     }
 
     @Test
+    @DisplayName("워크스페이스 VIEWER도 엔드포인트 조회 가능")
+    void getEndpoint_workspaceViewer_canRead() {
+        // given
+        User owner = createUser(1L);
+        User viewer = createUser(2L);
+        Workspace workspace = createWorkspace(1L, owner);
+        Project project = createWorkspaceProject(1L, owner, workspace);
+        Endpoint endpoint = createEndpoint(1L, project);
+
+        given(userService.getUserDetail()).willReturn(viewer);
+        given(endpointRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(endpoint));
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 2L))
+            .willReturn(Optional.of(createMember(1L, workspace, viewer, WorkspaceRole.VIEWER)));
+
+        // when
+        EndpointResponse response = endpointService.getEndpoint(1L);
+
+        // then
+        assertThat(response.id()).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("워크스페이스 VIEWER는 엔드포인트 수정 불가")
+    void updateEndpoint_workspaceViewer_throwsForbiddenException() {
+        // given
+        User owner = createUser(1L);
+        User viewer = createUser(2L);
+        Workspace workspace = createWorkspace(1L, owner);
+        Project project = createWorkspaceProject(1L, owner, workspace);
+        Endpoint endpoint = createEndpoint(1L, project);
+
+        given(userService.getUserDetail()).willReturn(viewer);
+        given(endpointRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(endpoint));
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 2L))
+            .willReturn(Optional.of(createMember(1L, workspace, viewer, WorkspaceRole.VIEWER)));
+
+        UpdateEndpointRequest request = new UpdateEndpointRequest(
+            "https://api.example.com/new-health", null, null, null, null, null
+        );
+
+        // when & then
+        assertThatThrownBy(() -> endpointService.updateEndpoint(1L, request))
+            .isInstanceOf(ForbiddenException.class)
+            .hasMessage("VIEWER는 쓰기 작업을 수행할 수 없습니다.");
+    }
+
+    @Test
+    @DisplayName("워크스페이스 MEMBER는 엔드포인트 삭제 불가")
+    void deleteEndpoint_workspaceMember_throwsForbiddenException() {
+        // given
+        User owner = createUser(1L);
+        User member = createUser(2L);
+        Workspace workspace = createWorkspace(1L, owner);
+        Project project = createWorkspaceProject(1L, owner, workspace);
+        Endpoint endpoint = createEndpoint(1L, project);
+
+        given(userService.getUserDetail()).willReturn(member);
+        given(endpointRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(endpoint));
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 2L))
+            .willReturn(Optional.of(createMember(1L, workspace, member, WorkspaceRole.MEMBER)));
+
+        // when & then
+        assertThatThrownBy(() -> endpointService.deleteEndpoint(1L))
+            .isInstanceOf(ForbiddenException.class)
+            .hasMessage("엔드포인트 삭제는 ADMIN 이상만 가능합니다.");
+    }
+
+    @Test
+    @DisplayName("워크스페이스 ADMIN은 엔드포인트 삭제 가능")
+    void deleteEndpoint_workspaceAdmin_success() {
+        // given
+        User owner = createUser(1L);
+        User admin = createUser(2L);
+        Workspace workspace = createWorkspace(1L, owner);
+        Project project = createWorkspaceProject(1L, owner, workspace);
+        Endpoint endpoint = createEndpoint(1L, project);
+
+        given(userService.getUserDetail()).willReturn(admin);
+        given(endpointRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(endpoint));
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 2L))
+            .willReturn(Optional.of(createMember(1L, workspace, admin, WorkspaceRole.ADMIN)));
+
+        // when
+        endpointService.deleteEndpoint(1L);
+
+        // then
+        assertThat(endpoint.isDeleted()).isTrue();
+    }
+
+    @Test
     @DisplayName("프로젝트 내 엔드포인트 목록 조회")
     void getEndpoints_success() {
         // given
         User user = createUser(1L);
         Project project = createProject(1L, user);
 
-        given(projectService.getProjectWithOwnerCheck(1L)).willReturn(project);
+        given(projectService.getProjectWithAccessCheck(1L)).willReturn(project);
 
         List<Endpoint> endpoints = List.of(
             createEndpoint(1L, project),

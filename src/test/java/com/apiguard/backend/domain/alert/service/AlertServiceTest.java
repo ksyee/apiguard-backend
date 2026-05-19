@@ -124,7 +124,7 @@ class AlertServiceTest {
         Project project = createProject(1L, user);
         Endpoint endpoint = createEndpoint(1L, project);
 
-        given(endpointService.getEndpointWithOwnerCheck(1L)).willReturn(endpoint);
+        given(endpointService.getEndpointWithWriteCheck(1L)).willReturn(endpoint);
 
         CreateAlertRequest request = new CreateAlertRequest(
             AlertType.EMAIL, "alert@example.com", 3
@@ -151,7 +151,7 @@ class AlertServiceTest {
         Project project = createProject(1L, user);
         Endpoint endpoint = createEndpoint(1L, project);
 
-        given(endpointService.getEndpointWithOwnerCheck(1L)).willReturn(endpoint);
+        given(endpointService.getEndpointWithAccessCheck(1L)).willReturn(endpoint);
 
         List<AlertConfig> alerts = List.of(
             createAlertConfig(1L, endpoint),
@@ -176,7 +176,7 @@ class AlertServiceTest {
         AlertConfig alertConfig = createAlertConfig(1L, endpoint);
 
         given(alertConfigRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(alertConfig));
-        given(endpointService.getEndpointWithOwnerCheck(1L)).willReturn(endpoint);
+        given(endpointService.getEndpointWithWriteCheck(1L)).willReturn(endpoint);
 
         UpdateAlertRequest request = new UpdateAlertRequest(
             AlertType.SLACK, "https://hooks.slack.com/test", 5
@@ -201,7 +201,7 @@ class AlertServiceTest {
         AlertConfig alertConfig = createAlertConfig(1L, endpoint);
 
         given(alertConfigRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(alertConfig));
-        given(endpointService.getEndpointWithOwnerCheck(1L)).willReturn(endpoint);
+        given(endpointService.getEndpointWithWriteCheck(1L)).willReturn(endpoint);
 
         // when
         alertService.deleteAlert(1L);
@@ -220,7 +220,7 @@ class AlertServiceTest {
         AlertConfig alertConfig = createAlertConfig(1L, endpoint);
 
         given(alertConfigRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(alertConfig));
-        given(endpointService.getEndpointWithOwnerCheck(1L)).willReturn(endpoint);
+        given(endpointService.getEndpointWithWriteCheck(1L)).willReturn(endpoint);
 
         // when
         AlertResponse response = alertService.toggleAlert(1L);

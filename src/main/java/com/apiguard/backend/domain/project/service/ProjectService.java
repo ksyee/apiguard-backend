@@ -81,7 +81,7 @@ public class ProjectService {
     }
 
     public ProjectResponse getProject(Long id) {
-        Project project = getProjectWithOwnerCheck(id);
+        Project project = getProjectWithAccessCheck(id);
         return ProjectResponse.from(project);
     }
 
@@ -94,16 +94,24 @@ public class ProjectService {
 
     @Transactional
     public void deleteProject(Long id) {
-        Project project = getProjectWithOwnerCheck(id);
+        Project project = getProjectWithDeleteCheck(id);
         project.softDelete();
     }
 
-    public Project getProjectWithOwnerCheck(Long projectId) {
+    public Project getProjectWithDeleteCheck(Long projectId) {
         User user = userService.getUserDetail();
         Project project = projectRepository.findByIdAndDeletedFalse(projectId)
             .orElseThrow(() -> new ProjectNotFoundException("프로젝트를 찾을 수 없습니다."));
 
-        if (!project.getUser().getId().equals(user.getId())) {
+        if (project.getWorkspace() != null) {
+            Long workspaceId = project.getWorkspace().getId();
+            WorkspaceMember member = workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, user.getId())
+                .orElseThrow(() -> new ForbiddenException("해당 프로젝트에 대한 권한이 없습니다."));
+
+            if (!member.getRole().isAtLeast(WorkspaceRole.ADMIN)) {
+                throw new ForbiddenException("프로젝트 삭제는 ADMIN 이상만 가능합니다.");
+            }
+        } else if (project.getUser() == null || !project.getUser().getId().equals(user.getId())) {
             throw new ForbiddenException("해당 프로젝트에 대한 권한이 없습니다.");
         }
 
@@ -136,7 +144,7 @@ public class ProjectService {
             WorkspaceMember member = workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, user.getId())
                 .orElseThrow(() -> new ForbiddenException("해당 프로젝트에 대한 권한이 없습니다."));
 
-            if (member.getRole() == WorkspaceRole.VIEWER) {
+            if (!member.getRole().isAtLeast(WorkspaceRole.MEMBER)) {
                 throw new ForbiddenException("VIEWER는 쓰기 작업을 수행할 수 없습니다.");
             }
         } else {

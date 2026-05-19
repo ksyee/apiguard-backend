@@ -9,6 +9,7 @@ import com.apiguard.backend.domain.project.entity.Project;
 import com.apiguard.backend.domain.project.service.ProjectService;
 import com.apiguard.backend.domain.subscription.service.SubscriptionService;
 import com.apiguard.backend.domain.workspace.entity.WorkspaceMember;
+import com.apiguard.backend.domain.workspace.entity.WorkspaceRole;
 import com.apiguard.backend.domain.workspace.repository.WorkspaceMemberRepository;
 import com.apiguard.backend.global.exception.EndpointNotFoundException;
 import com.apiguard.backend.global.exception.ForbiddenException;
@@ -34,7 +35,7 @@ public class EndpointService {
 
     @Transactional
     public EndpointResponse createEndpoint(Long projectId, CreateEndpointRequest request) {
-        Project project = projectService.getProjectWithOwnerCheck(projectId);
+        Project project = projectService.getProjectWithMemberCheck(projectId);
 
         if (project.getWorkspace() != null) {
             Long workspaceId = project.getWorkspace().getId();
@@ -58,20 +59,20 @@ public class EndpointService {
     }
 
     public List<EndpointResponse> getEndpoints(Long projectId) {
-        projectService.getProjectWithOwnerCheck(projectId);
+        projectService.getProjectWithAccessCheck(projectId);
         return endpointRepository.findByProjectIdAndDeletedFalse(projectId).stream()
             .map(EndpointResponse::from)
             .toList();
     }
 
     public EndpointResponse getEndpoint(Long id) {
-        Endpoint endpoint = getEndpointWithOwnerCheck(id);
+        Endpoint endpoint = getEndpointWithAccessCheck(id);
         return EndpointResponse.from(endpoint);
     }
 
     @Transactional
     public EndpointResponse updateEndpoint(Long id, UpdateEndpointRequest request) {
-        Endpoint endpoint = getEndpointWithOwnerCheck(id);
+        Endpoint endpoint = getEndpointWithWriteCheck(id);
 
         if (endpoint.getProject().getWorkspace() != null && request.checkInterval() != null) {
             Long workspaceId = endpoint.getProject().getWorkspace().getId();
@@ -91,18 +92,30 @@ public class EndpointService {
 
     @Transactional
     public void deleteEndpoint(Long id) {
-        Endpoint endpoint = getEndpointWithOwnerCheck(id);
+        Endpoint endpoint = getEndpointWithDeleteCheck(id);
         endpoint.softDelete();
     }
 
     @Transactional
     public EndpointResponse toggleEndpoint(Long id) {
-        Endpoint endpoint = getEndpointWithOwnerCheck(id);
+        Endpoint endpoint = getEndpointWithWriteCheck(id);
         endpoint.toggleActive();
         return EndpointResponse.from(endpoint);
     }
 
-    public Endpoint getEndpointWithOwnerCheck(Long endpointId) {
+    public Endpoint getEndpointWithAccessCheck(Long endpointId) {
+        return getEndpointWithPermissionCheck(endpointId, WorkspaceRole.VIEWER, null);
+    }
+
+    public Endpoint getEndpointWithWriteCheck(Long endpointId) {
+        return getEndpointWithPermissionCheck(endpointId, WorkspaceRole.MEMBER, "VIEWER는 쓰기 작업을 수행할 수 없습니다.");
+    }
+
+    public Endpoint getEndpointWithDeleteCheck(Long endpointId) {
+        return getEndpointWithPermissionCheck(endpointId, WorkspaceRole.ADMIN, "엔드포인트 삭제는 ADMIN 이상만 가능합니다.");
+    }
+
+    private Endpoint getEndpointWithPermissionCheck(Long endpointId, WorkspaceRole requiredRole, String forbiddenMessage) {
         User user = userService.getUserDetail();
         Endpoint endpoint = endpointRepository.findByIdAndDeletedFalse(endpointId)
             .orElseThrow(() -> new EndpointNotFoundException("엔드포인트를 찾을 수 없습니다."));
@@ -113,8 +126,11 @@ public class EndpointService {
 
         if (endpoint.getProject().getWorkspace() != null) {
             Long workspaceId = endpoint.getProject().getWorkspace().getId();
-            workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, user.getId())
+            WorkspaceMember member = workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, user.getId())
                 .orElseThrow(() -> new ForbiddenException("해당 엔드포인트에 대한 권한이 없습니다."));
+            if (!member.getRole().isAtLeast(requiredRole)) {
+                throw new ForbiddenException(forbiddenMessage != null ? forbiddenMessage : "해당 엔드포인트에 대한 권한이 없습니다.");
+            }
         } else {
             if (!endpoint.getProject().getUser().getId().equals(user.getId())) {
                 throw new ForbiddenException("해당 엔드포인트에 대한 권한이 없습니다.");
