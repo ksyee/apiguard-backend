@@ -47,4 +47,10 @@ public class PaymentController {
             @PathVariable Long workspaceId) {
         return ApiResponse.ok(paymentService.getPaymentHistory(workspaceId));
     }
+
+    @PostMapping("/subscription/cancel")
+    public ApiResponse<SubscriptionStatusResponse> cancelSubscription(
+            @PathVariable Long workspaceId) {
+        return ApiResponse.ok(paymentService.cancelSubscription(workspaceId));
+    }
 }

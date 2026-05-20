@@ -52,6 +52,10 @@ public class Subscription {
     @Column(length = 255)
     private String externalSubscriptionId;
 
+    @Builder.Default
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean cancelAtPeriodEnd = false;
+
     public boolean isActive() {
         return expiredAt == null || expiredAt.isAfter(LocalDateTime.now());
     }
@@ -60,5 +64,26 @@ public class Subscription {
         this.planType = planType;
         this.externalSubscriptionId = paymentKey;
         this.expiredAt = expiredAt;
+        this.cancelAtPeriodEnd = false;
+    }
+
+    public void cancelToFree() {
+        this.planType = PlanType.FREE;
+        this.externalSubscriptionId = null;
+        this.expiredAt = null;
+        this.cancelAtPeriodEnd = false;
+    }
+
+    public void requestCancelAtPeriodEnd() {
+        this.cancelAtPeriodEnd = true;
+        if (this.expiredAt == null) {
+            this.expiredAt = LocalDateTime.now();
+        }
+    }
+
+    public void downgradeExpiredProToFree() {
+        if (this.planType == PlanType.PRO && this.expiredAt != null && !this.expiredAt.isAfter(LocalDateTime.now())) {
+            cancelToFree();
+        }
     }
 }

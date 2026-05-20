@@ -7,6 +7,8 @@ import com.apiguard.backend.domain.endpoint.entity.HttpMethod;
 import com.apiguard.backend.domain.project.entity.Project;
 import com.apiguard.backend.domain.user.entity.Role;
 import com.apiguard.backend.domain.user.entity.User;
+import com.apiguard.backend.global.security.OutboundUrlGuard;
+import java.net.URI;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,6 +31,9 @@ class HttpCheckerServiceTest {
 
     @Mock
     private RestTemplate restTemplate;
+
+    @Mock
+    private OutboundUrlGuard outboundUrlGuard;
 
     @InjectMocks
     private HttpCheckerService httpCheckerService;
@@ -71,10 +76,11 @@ class HttpCheckerServiceTest {
         User user = createUser(1L);
         Project project = createProject(1L, user);
         Endpoint endpoint = createEndpoint(1L, project);
+        URI uri = allowEndpointUrl(endpoint);
 
         ResponseEntity<String> response = new ResponseEntity<>("OK", HttpStatus.OK);
         given(restTemplate.exchange(
-            eq(endpoint.getUrl()),
+            eq(uri),
             eq(org.springframework.http.HttpMethod.GET),
             any(HttpEntity.class),
             eq(String.class)
@@ -97,10 +103,11 @@ class HttpCheckerServiceTest {
         User user = createUser(1L);
         Project project = createProject(1L, user);
         Endpoint endpoint = createEndpoint(1L, project);
+        URI uri = allowEndpointUrl(endpoint);
 
         ResponseEntity<String> response = new ResponseEntity<>("Error", HttpStatus.INTERNAL_SERVER_ERROR);
         given(restTemplate.exchange(
-            eq(endpoint.getUrl()),
+            eq(uri),
             eq(org.springframework.http.HttpMethod.GET),
             any(HttpEntity.class),
             eq(String.class)
@@ -121,9 +128,10 @@ class HttpCheckerServiceTest {
         User user = createUser(1L);
         Project project = createProject(1L, user);
         Endpoint endpoint = createEndpoint(1L, project);
+        URI uri = allowEndpointUrl(endpoint);
 
         given(restTemplate.exchange(
-            eq(endpoint.getUrl()),
+            eq(uri),
             eq(org.springframework.http.HttpMethod.GET),
             any(HttpEntity.class),
             eq(String.class)
@@ -144,12 +152,13 @@ class HttpCheckerServiceTest {
         User user = createUser(1L);
         Project project = createProject(1L, user);
         Endpoint endpoint = createEndpoint(1L, project);
+        URI uri = allowEndpointUrl(endpoint);
 
         ResponseEntity<String> failResponse = new ResponseEntity<>("Error", HttpStatus.INTERNAL_SERVER_ERROR);
         ResponseEntity<String> successResponse = new ResponseEntity<>("OK", HttpStatus.OK);
 
         given(restTemplate.exchange(
-            eq(endpoint.getUrl()),
+            eq(uri),
             eq(org.springframework.http.HttpMethod.GET),
             any(HttpEntity.class),
             eq(String.class)
@@ -170,11 +179,12 @@ class HttpCheckerServiceTest {
         User user = createUser(1L);
         Project project = createProject(1L, user);
         Endpoint endpoint = createEndpoint(1L, project);
+        URI uri = allowEndpointUrl(endpoint);
 
         ResponseEntity<String> failResponse = new ResponseEntity<>("Error", HttpStatus.INTERNAL_SERVER_ERROR);
 
         given(restTemplate.exchange(
-            eq(endpoint.getUrl()),
+            eq(uri),
             eq(org.springframework.http.HttpMethod.GET),
             any(HttpEntity.class),
             eq(String.class)
@@ -186,5 +196,12 @@ class HttpCheckerServiceTest {
         // then
         assertThat(result.getStatus()).isEqualTo(CheckStatus.FAILURE);
         assertThat(result.getStatusCode()).isEqualTo(500);
+    }
+
+    private URI allowEndpointUrl(Endpoint endpoint) {
+        URI uri = URI.create(endpoint.getUrl());
+        given(outboundUrlGuard.validateHttpUrl(endpoint.getUrl(), "엔드포인트 URL"))
+            .willReturn(uri);
+        return uri;
     }
 }

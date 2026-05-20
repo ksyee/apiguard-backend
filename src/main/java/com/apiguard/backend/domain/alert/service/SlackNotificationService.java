@@ -4,6 +4,8 @@ import com.apiguard.backend.domain.alert.entity.AlertConfig;
 import com.apiguard.backend.domain.alert.entity.AlertType;
 import com.apiguard.backend.domain.check.entity.CheckResult;
 import com.apiguard.backend.domain.endpoint.entity.Endpoint;
+import com.apiguard.backend.global.security.OutboundUrlGuard;
+import java.net.URI;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,6 +21,7 @@ import java.util.stream.Collectors;
 public class SlackNotificationService implements NotificationService {
 
     private final RestTemplate restTemplate;
+    private final OutboundUrlGuard outboundUrlGuard;
 
     @Override
     public boolean supports(AlertType alertType) {
@@ -30,7 +33,8 @@ public class SlackNotificationService implements NotificationService {
         String text = buildSlackMessage(endpoint, recentFailures, config.getThreshold());
         Map<String, String> payload = Map.of("text", text);
 
-        restTemplate.postForEntity(config.getTarget(), payload, String.class);
+        URI uri = outboundUrlGuard.validateHttpUrl(config.getTarget(), "Slack Webhook URL");
+        restTemplate.postForEntity(uri, payload, String.class);
     }
 
     private String buildSlackMessage(Endpoint endpoint, List<CheckResult> failures, int threshold) {

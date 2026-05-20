@@ -5,12 +5,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import com.apiguard.backend.domain.project.dto.CreateProjectRequest;
 import com.apiguard.backend.domain.project.dto.ProjectResponse;
 import com.apiguard.backend.domain.project.dto.UpdateProjectRequest;
 import com.apiguard.backend.domain.project.entity.Project;
 import com.apiguard.backend.domain.project.repository.ProjectRepository;
+import com.apiguard.backend.domain.subscription.service.SubscriptionService;
 import com.apiguard.backend.domain.user.entity.Role;
 import com.apiguard.backend.domain.user.entity.User;
 import com.apiguard.backend.domain.user.service.UserService;
@@ -48,6 +50,9 @@ class ProjectServiceTest {
 
     @Mock
     private WorkspaceMemberRepository workspaceMemberRepository;
+
+    @Mock
+    private SubscriptionService subscriptionService;
 
     @InjectMocks
     private ProjectService projectService;
@@ -122,6 +127,27 @@ class ProjectServiceTest {
         assertThat(response.id()).isEqualTo(1L);
         assertThat(response.name()).isEqualTo("My Project");
         assertThat(response.description()).isEqualTo("My Description");
+    }
+
+    @Test
+    @DisplayName("워크스페이스 프로젝트 생성 시 플랜의 프로젝트 수 제한을 검증한다")
+    void createWorkspaceProject_validatesProjectLimit() {
+        // given
+        User owner = createUser(1L);
+        Workspace workspace = createWorkspace(1L, owner);
+        given(workspaceRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(workspace));
+        given(userService.getUserDetail()).willReturn(owner);
+
+        CreateProjectRequest request = new CreateProjectRequest("Workspace Project", "Description");
+        Project saved = createWorkspaceProject(1L, owner, workspace);
+        given(projectRepository.save(any(Project.class))).willReturn(saved);
+
+        // when
+        projectService.createProject(1L, request);
+
+        // then
+        verify(workspaceService).checkWritePermission(1L);
+        verify(subscriptionService).validateProjectCount(1L);
     }
 
     @Test

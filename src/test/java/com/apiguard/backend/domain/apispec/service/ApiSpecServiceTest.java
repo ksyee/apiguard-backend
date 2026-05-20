@@ -20,7 +20,9 @@ import com.apiguard.backend.domain.project.entity.Project;
 import com.apiguard.backend.domain.project.service.ProjectService;
 import com.apiguard.backend.domain.user.entity.Role;
 import com.apiguard.backend.domain.user.entity.User;
+import com.apiguard.backend.global.security.OutboundUrlGuard;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,6 +57,9 @@ class ApiSpecServiceTest {
     @Mock
     private IncidentService incidentService;
 
+    @Mock
+    private OutboundUrlGuard outboundUrlGuard;
+
     private ApiSpecService apiSpecService;
 
     @BeforeEach
@@ -67,7 +72,8 @@ class ApiSpecServiceTest {
             projectService,
             restTemplate,
             new ObjectMapper(),
-            incidentService
+            incidentService,
+            outboundUrlGuard
         );
     }
 
@@ -104,7 +110,10 @@ class ApiSpecServiceTest {
         given(projectService.getProjectWithMemberCheck(1L)).willReturn(project);
         given(specSnapshotRepository.findFirstBySpecSourceIdOrderByCapturedAtDesc(1L))
             .willReturn(Optional.of(baseSnapshot));
-        given(restTemplate.getForObject("https://example.com/openapi.json", String.class))
+        URI specUri = URI.create("https://example.com/openapi.json");
+        given(outboundUrlGuard.validateHttpUrl("https://example.com/openapi.json", "OpenAPI 스펙 URL"))
+            .willReturn(specUri);
+        given(restTemplate.getForObject(specUri, String.class))
             .willReturn(headSpec());
         given(specSnapshotRepository.save(any(ApiSpecSnapshot.class))).willAnswer(invocation -> {
             ApiSpecSnapshot snapshot = invocation.getArgument(0);

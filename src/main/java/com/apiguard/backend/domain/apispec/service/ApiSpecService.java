@@ -5,6 +5,7 @@ import com.apiguard.backend.domain.apispec.dto.ApiSpecDiffResponse;
 import com.apiguard.backend.domain.apispec.dto.ApiSpecSourceResponse;
 import com.apiguard.backend.domain.apispec.dto.BreakingChangeResponse;
 import com.apiguard.backend.domain.apispec.dto.CreateApiSpecSourceRequest;
+import com.apiguard.backend.domain.apispec.dto.UpdateApiSpecSourceRequest;
 import com.apiguard.backend.domain.apispec.entity.ApiSpecDiff;
 import com.apiguard.backend.domain.apispec.entity.ApiSpecSnapshot;
 import com.apiguard.backend.domain.apispec.entity.ApiSpecSource;
@@ -18,9 +19,11 @@ import com.apiguard.backend.domain.incident.service.IncidentService;
 import com.apiguard.backend.domain.project.entity.Project;
 import com.apiguard.backend.domain.project.service.ProjectService;
 import com.apiguard.backend.global.exception.ApiSpecNotFoundException;
+import com.apiguard.backend.global.security.OutboundUrlGuard;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -55,6 +58,7 @@ public class ApiSpecService {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final IncidentService incidentService;
+    private final OutboundUrlGuard outboundUrlGuard;
 
     @Transactional
     public ApiSpecSourceResponse createSource(Long projectId, CreateApiSpecSourceRequest request) {
@@ -77,8 +81,46 @@ public class ApiSpecService {
     }
 
     @Transactional
+    public ApiSpecSourceResponse updateSource(Long sourceId, UpdateApiSpecSourceRequest request) {
+        ApiSpecSource source = getSourceWithWriteCheck(sourceId);
+        source.update(
+            normalizeBlankToNull(request.name()),
+            normalizeBlankToNull(request.specUrl()),
+            request.active()
+        );
+        return ApiSpecSourceResponse.from(source);
+    }
+
+    @Transactional
+    public void deleteSource(Long sourceId) {
+        ApiSpecSource source = getSourceWithWriteCheck(sourceId);
+        source.softDelete();
+    }
+
+    @Transactional
+    public ApiSpecSourceResponse toggleSource(Long sourceId) {
+        ApiSpecSource source = getSourceWithWriteCheck(sourceId);
+        source.toggleActive();
+        return ApiSpecSourceResponse.from(source);
+    }
+
+    @Transactional
     public ApiSpecDiffDetailResponse checkSource(Long sourceId) {
         ApiSpecSource source = getSourceWithWriteCheck(sourceId);
+        return checkLoadedSource(source);
+    }
+
+    @Transactional
+    public ApiSpecDiffDetailResponse checkActiveSource(Long sourceId) {
+        ApiSpecSource source = specSourceRepository.findByIdAndDeletedFalse(sourceId)
+            .orElseThrow(() -> new ApiSpecNotFoundException("API 스펙 소스를 찾을 수 없습니다."));
+        return checkLoadedSource(source);
+    }
+
+    private ApiSpecDiffDetailResponse checkLoadedSource(ApiSpecSource source) {
+        if (!source.isActive()) {
+            throw new IllegalArgumentException("비활성화된 OpenAPI 소스는 검사할 수 없습니다.");
+        }
         ApiSpecSnapshot baseSnapshot = specSnapshotRepository
             .findFirstBySpecSourceIdOrderByCapturedAtDesc(source.getId())
             .orElse(null);
@@ -168,7 +210,8 @@ public class ApiSpecService {
 
     private JsonNode fetchSpec(String specUrl) {
         try {
-            String raw = restTemplate.getForObject(specUrl, String.class);
+            URI uri = outboundUrlGuard.validateHttpUrl(specUrl, "OpenAPI 스펙 URL");
+            String raw = restTemplate.getForObject(uri, String.class);
             if (raw == null || raw.isBlank()) {
                 throw new IllegalArgumentException("OpenAPI 스펙 응답이 비어 있습니다.");
             }
@@ -641,6 +684,13 @@ public class ApiSpecService {
             return "Spec changed, but no configured breaking changes were detected.";
         }
         return "Detected " + changes.size() + " breaking change(s).";
+    }
+
+    private String normalizeBlankToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 
     @FunctionalInterface

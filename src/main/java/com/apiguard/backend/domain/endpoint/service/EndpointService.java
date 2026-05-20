@@ -7,6 +7,7 @@ import com.apiguard.backend.domain.endpoint.entity.Endpoint;
 import com.apiguard.backend.domain.endpoint.repository.EndpointRepository;
 import com.apiguard.backend.domain.project.entity.Project;
 import com.apiguard.backend.domain.project.service.ProjectService;
+import com.apiguard.backend.domain.subscription.service.PlanLimitPolicy;
 import com.apiguard.backend.domain.subscription.service.SubscriptionService;
 import com.apiguard.backend.domain.workspace.entity.WorkspaceMember;
 import com.apiguard.backend.domain.workspace.entity.WorkspaceRole;
@@ -36,11 +37,11 @@ public class EndpointService {
     @Transactional
     public EndpointResponse createEndpoint(Long projectId, CreateEndpointRequest request) {
         Project project = projectService.getProjectWithMemberCheck(projectId);
+        int checkInterval = resolveCheckInterval(project, request.checkInterval());
 
         if (project.getWorkspace() != null) {
             Long workspaceId = project.getWorkspace().getId();
             subscriptionService.validateEndpointCount(workspaceId, projectId);
-            int checkInterval = request.checkInterval() != null ? request.checkInterval() : 60;
             subscriptionService.validateCheckInterval(workspaceId, checkInterval);
         }
 
@@ -51,7 +52,7 @@ public class EndpointService {
             .headers(request.headers())
             .body(request.body())
             .expectedStatusCode(request.expectedStatusCode() != null ? request.expectedStatusCode() : 200)
-            .checkInterval(request.checkInterval() != null ? request.checkInterval() : 60)
+            .checkInterval(checkInterval)
             .build();
 
         Endpoint saved = endpointRepository.save(endpoint);
@@ -138,5 +139,17 @@ public class EndpointService {
         }
 
         return endpoint;
+    }
+
+    private int resolveCheckInterval(Project project, Integer requestedCheckInterval) {
+        if (requestedCheckInterval != null) {
+            return requestedCheckInterval;
+        }
+        if (project.getWorkspace() == null) {
+            return 60;
+        }
+
+        PlanLimitPolicy policy = subscriptionService.getPolicyForWorkspace(project.getWorkspace().getId());
+        return policy.minCheckIntervalSeconds();
     }
 }

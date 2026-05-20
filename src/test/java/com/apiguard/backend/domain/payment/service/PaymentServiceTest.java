@@ -17,6 +17,7 @@ import com.apiguard.backend.domain.payment.repository.PaymentRepository;
 import com.apiguard.backend.domain.subscription.entity.PlanType;
 import com.apiguard.backend.domain.subscription.entity.Subscription;
 import com.apiguard.backend.domain.subscription.repository.SubscriptionRepository;
+import com.apiguard.backend.domain.subscription.service.ProPlanLimitPolicy;
 import com.apiguard.backend.domain.subscription.service.SubscriptionService;
 import com.apiguard.backend.domain.user.entity.Role;
 import com.apiguard.backend.domain.user.entity.User;
@@ -325,6 +326,26 @@ class PaymentServiceTest {
             .hasMessage("이미 PRO 플랜을 구독 중입니다.");
 
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.CANCELLED);
+    }
+
+    @Test
+    @DisplayName("cancelSubscription 성공 시 PRO 구독을 기간 종료 취소로 예약한다")
+    void cancelSubscription_success() {
+        Workspace workspace = createWorkspace(1L);
+        LocalDateTime expiredAt = LocalDateTime.now().plusDays(20);
+        Subscription subscription = createSubscription(workspace, PlanType.PRO, expiredAt);
+
+        given(workspaceService.getMemberRole(1L)).willReturn(WorkspaceRole.OWNER);
+        given(subscriptionRepository.findByWorkspaceId(1L)).willReturn(Optional.of(subscription));
+        given(subscriptionService.getPolicyForWorkspace(1L)).willReturn(new ProPlanLimitPolicy());
+
+        var response = paymentService.cancelSubscription(1L);
+
+        assertThat(subscription.getPlanType()).isEqualTo(PlanType.PRO);
+        assertThat(subscription.isCancelAtPeriodEnd()).isTrue();
+        assertThat(subscription.getExpiredAt()).isEqualTo(expiredAt);
+        assertThat(response.planType()).isEqualTo(PlanType.PRO);
+        assertThat(response.cancelAtPeriodEnd()).isTrue();
     }
 
     private User createUser(Long id) {

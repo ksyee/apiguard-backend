@@ -20,6 +20,7 @@ APIGuard는 외부 API 의존성이 있는 개발팀을 위한 **API Reliability
 - `POST /auth/logout`
 - `POST /users/signup`
 - `GET /health`
+- `GET /status/{slug}`
 - `GET /error`
 - `GET /swagger-ui/**` (dev profile)
 - `GET /v3/api-docs/**` (dev profile)
@@ -54,7 +55,8 @@ All endpoints return `ApiResponse<T>`.
 ### Enums
 - `HttpMethod`: `GET | POST | PUT | PATCH | DELETE | HEAD | OPTIONS`
 - `CheckStatus`: `SUCCESS | FAILURE | TIMEOUT | ERROR`
-- `AlertType`: `EMAIL | SLACK`
+- `AlertType`: `EMAIL | SLACK | WEBHOOK`
+- `AlertDeliveryStatus`: `SUCCESS | FAILED`
 - `IncidentStatus`: `OPEN | RESOLVED`
 - `IncidentType`: `AVAILABILITY | PERFORMANCE | CONTRACT_CHANGE`
 - `BreakingChangeRule`: `PATH_REMOVED | METHOD_REMOVED | REQUIRED_PARAMETER_ADDED | REQUIRED_REQUEST_BODY_ADDED | REQUEST_BODY_REQUIRED_FIELD_ADDED | RESPONSE_FIELD_REMOVED | RESPONSE_FIELD_TYPE_CHANGED`
@@ -279,14 +281,17 @@ Response item
 Request
 ```json
 {
-  "email": "invite@example.com"
+  "email": "invite@example.com",
+  "role": "MEMBER"
 }
 ```
 
 Notes
 - Invite target must already exist user account.
 - FREE plan cannot invite members (`402`).
-- Invited member role is always `MEMBER`.
+- `role` defaults to `MEMBER` when omitted.
+- `OWNER` cannot be assigned by invitation.
+- `ADMIN` can invite only `MEMBER` or `VIEWER`; only `OWNER` can invite `ADMIN`.
 
 ### 4.7 Update Member Role
 `PATCH /workspaces/{id}/members/{userId}/role` (auth required, `OWNER` only)
@@ -317,7 +322,9 @@ Response `200`
   "data": {
     "planType": "FREE",
     "active": true,
+    "cancelAtPeriodEnd": false,
     "expiredAt": null,
+    "maxProjects": 3,
     "maxEndpointsPerProject": 5,
     "minCheckIntervalSeconds": 300,
     "maxAlertChannels": 1,
@@ -361,6 +368,33 @@ Request
 ### 5.4 Payment History
 `GET /api/workspaces/{workspaceId}/payment/history` (auth required, workspace member)
 
+### 5.5 Cancel Subscription
+`POST /api/workspaces/{workspaceId}/subscription/cancel` (auth required, `OWNER` only)
+
+Behavior
+- Schedules the active PRO subscription to cancel at the current period end.
+- PRO limits remain available until `expiredAt`; after the period expires, the workspace falls back to FREE.
+- If there is no active PRO subscription, returns `409`.
+
+Response `200`
+```json
+{
+  "success": true,
+  "data": {
+    "planType": "PRO",
+    "active": true,
+    "cancelAtPeriodEnd": true,
+    "expiredAt": "2026-06-20T10:00:00",
+    "maxProjects": 50,
+    "maxEndpointsPerProject": 50,
+    "minCheckIntervalSeconds": 30,
+    "maxAlertChannels": -1,
+    "maxMembers": -1,
+    "dataRetentionDays": 90
+  }
+}
+```
+
 ---
 
 ## 6) Project
@@ -375,6 +409,9 @@ Request
   "description": "메인 서비스"
 }
 ```
+
+Behavior
+- Plan limit enforced: FREE 3 projects per workspace, PRO 50 projects per workspace.
 
 ### 6.2 List Projects in Workspace
 `GET /workspaces/{workspaceId}/projects` (auth required, workspace member)
@@ -465,7 +502,9 @@ Request
 Behavior
 - `threshold` default: `3`
 - Plan limit enforced: FREE max 1 channel per endpoint, PRO unlimited
-- Duplicate alerts are suppressed by Redis cooldown (30 minutes)
+- Supported `alertType`: `EMAIL`, `SLACK`, `WEBHOOK`
+- Duplicate successful alerts are suppressed by Redis cooldown (30 minutes)
+- Delivery success/failure is persisted for audit and troubleshooting.
 
 ### 8.2 List Alerts
 `GET /endpoints/{endpointId}/alerts` (auth required, workspace member or personal project owner)
@@ -479,6 +518,20 @@ Behavior
 ### 8.5 Toggle Alert
 `PATCH /alerts/{id}/toggle` (auth required, workspace `MEMBER` or above; personal project owner)
 
+### 8.6 Send Test Alert
+`POST /alerts/{id}/test` (auth required, workspace `MEMBER` or above; personal project owner)
+
+Behavior
+- Sends one test notification to the alert target.
+- Stores the result as an alert delivery with `testDelivery=true`.
+- Test delivery does not set the Redis cooldown key.
+
+### 8.7 Alert Delivery History
+`GET /alerts/{id}/deliveries` (auth required, workspace member or personal project owner)
+
+Query params
+- `limit` (default `20`, max `100`)
+
 Alert response model
 ```json
 {
@@ -489,6 +542,21 @@ Alert response model
   "threshold": 3,
   "isActive": true,
   "createdAt": "2026-02-26T00:00:00"
+}
+```
+
+Alert delivery response model
+```json
+{
+  "id": 10,
+  "alertId": 1,
+  "endpointId": 1,
+  "alertType": "WEBHOOK",
+  "target": "https://hooks.example.com/apiguard",
+  "status": "SUCCESS",
+  "testDelivery": true,
+  "errorMessage": null,
+  "triggeredAt": "2026-05-20T10:00:00"
 }
 ```
 
@@ -593,7 +661,29 @@ Request
 ### 11.2 List Spec Sources
 `GET /projects/{projectId}/spec-sources` (auth required, workspace member or personal project owner)
 
-### 11.3 Check Spec Source
+### 11.3 Update Spec Source
+`PUT /spec-sources/{sourceId}` (auth required, workspace `MEMBER` or above; personal project owner)
+
+Request
+```json
+{
+  "name": "Payments API v2",
+  "specUrl": "https://api.example.com/openapi-v2.json",
+  "active": true
+}
+```
+
+Notes
+- All fields are optional; only provided values are updated.
+- `active=false` keeps the source but blocks manual checks until re-enabled.
+
+### 11.4 Delete Spec Source
+`DELETE /spec-sources/{sourceId}` (auth required, workspace `MEMBER` or above; personal project owner)
+
+### 11.5 Toggle Spec Source
+`PATCH /spec-sources/{sourceId}/toggle` (auth required, workspace `MEMBER` or above; personal project owner)
+
+### 11.6 Check Spec Source
 `POST /spec-sources/{sourceId}/check` (auth required, workspace `MEMBER` or above; personal project owner)
 
 Behavior
@@ -602,12 +692,36 @@ Behavior
 - Compares the latest snapshot with the previous snapshot.
 - Detects breaking changes for removed paths, removed methods, added required request parameters, newly required request bodies, added required request body fields, removed response fields, and changed response field types.
 - Creates or updates an open `CONTRACT_CHANGE` incident when breaking changes are detected.
+- Inactive spec sources return a bad request and are not checked.
 
-### 11.4 List Diffs
+Automatic checks
+- Active, non-deleted spec sources are also checked by the scheduler.
+- Deleted projects/workspaces and inactive sources are skipped.
+- The default scheduler interval is `apiguard.apispec.check-fixed-delay-ms=300000` and can be disabled with `apiguard.apispec.auto-check-enabled=false`.
+
+Outbound URL guard
+- Health checks, OpenAPI spec fetches, and Slack/Webhook notifications only allow `http`/`https` URLs.
+- Private network, loopback, link-local, multicast, and cloud metadata addresses are blocked by default.
+- Local dev/test can opt in with `apiguard.outbound.allow-private-network=true`.
+
+### 11.7 List Diffs
 `GET /spec-sources/{sourceId}/diffs` (auth required, workspace member or personal project owner)
 
-### 11.5 Diff Detail
+### 11.8 Diff Detail
 `GET /spec-diffs/{diffId}` (auth required, workspace member or personal project owner)
+
+Spec source response model
+```json
+{
+  "id": 1,
+  "projectId": 1,
+  "name": "Payments API",
+  "specUrl": "https://api.example.com/openapi.json",
+  "active": true,
+  "lastCheckedAt": "2026-05-20T10:00:00",
+  "createdAt": "2026-05-13T10:00:00"
+}
+```
 
 Response model
 ```json
@@ -633,9 +747,98 @@ Response model
 
 ---
 
-## 12) Health
+## 12) Status Page
 
-### 12.1 Health Check
+### 12.1 Public Status Page
+`GET /status/{slug}` (public)
+
+Behavior
+- Returns only public status pages.
+- If `allEndpoints=true`, all active workspace endpoints are included.
+- If `allEndpoints=false`, only active endpoints listed in `endpointIds` are exposed.
+- If `allEndpoints=false` and `endpointIds=[]`, the public page is returned with no endpoint rows.
+- For backward compatibility, omitting both `allEndpoints` and `endpointIds` on create publishes all active endpoints.
+
+Response model
+```json
+{
+  "title": "APIGuard Status",
+  "description": "External API dependency status",
+  "overallStatus": "OPERATIONAL",
+  "endpoints": [
+    {
+      "url": "https://api.example.com/health",
+      "httpMethod": "GET",
+      "status": "UP",
+      "uptimePercent": 99.9,
+      "avgResponseTimeMs": 120.5,
+      "lastCheckedAt": "2026-05-20T10:00:00"
+    }
+  ]
+}
+```
+
+### 12.2 Create Status Page
+`POST /workspaces/{workspaceId}/status-page` (auth required, workspace `MEMBER` or above)
+
+Request
+```json
+{
+  "title": "APIGuard Status",
+  "description": "External API dependency status",
+  "slug": "apiguard-status",
+  "allEndpoints": false,
+  "endpointIds": [1, 2]
+}
+```
+
+Response status: `201`
+
+### 12.3 Get Status Page
+`GET /workspaces/{workspaceId}/status-page` (auth required, workspace member)
+
+### 12.4 Update Status Page
+`PUT /workspaces/{workspaceId}/status-page` (auth required, workspace `MEMBER` or above)
+
+Request
+```json
+{
+  "title": "APIGuard Public Status",
+  "description": "Selected external API status",
+  "isPublic": true,
+  "allEndpoints": false,
+  "endpointIds": [1]
+}
+```
+
+Notes
+- `endpointIds` must belong to the workspace.
+- `allEndpoints=true` clears the explicit allowlist and exposes all active workspace endpoints.
+- `allEndpoints=false` with `endpointIds=[]` exposes no endpoints.
+- Omitting both `allEndpoints` and `endpointIds` during update keeps the existing endpoint selection.
+
+### 12.5 Delete Status Page
+`DELETE /workspaces/{workspaceId}/status-page` (auth required, workspace `MEMBER` or above)
+
+Status page response model
+```json
+{
+  "id": 1,
+  "slug": "apiguard-status",
+  "title": "APIGuard Status",
+  "description": "External API dependency status",
+  "isPublic": true,
+  "createdAt": "2026-05-20T10:00:00",
+  "allEndpoints": false,
+  "endpointIds": [1, 2]
+}
+```
+
+---
+
+## 13) Health
+
+### 13.1 Health Check
 `GET /health` (public)
 
 Response `200`
@@ -646,7 +849,7 @@ Response `200`
 }
 ```
 
-### 12.2 Test Error
+### 13.2 Test Error
 `GET /test-error` (auth required)
 
 Behavior
@@ -654,15 +857,20 @@ Behavior
 
 ---
 
-## 13) Operational Notes
+## 14) Operational Notes
 
 ### Scheduled Jobs
 - Health checks: fixed delay 60s scheduler + per-endpoint interval evaluation
 - Retention cleanup: every day at `03:00` server time (`cron: 0 0 3 * * *`)
 
+### Schema Notes
+- `alert_deliveries` stores notification delivery success/failure, target, test flag, error message, and trigger time.
+- `status_page_endpoints` stores the explicit endpoint allowlist for each public status page.
+
 ### Plan Summary
 | Item | FREE | PRO |
 |---|---:|---:|
+| Max projects per workspace | 3 | 50 |
 | Max endpoints per project | 5 | 50 |
 | Min check interval (sec) | 300 | 60 |
 | Max alert channels per endpoint | 1 | unlimited |

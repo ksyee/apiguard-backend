@@ -12,6 +12,11 @@ public class ProPlanLimitPolicy implements PlanLimitPolicy {
     }
 
     @Override
+    public int maxProjects() {
+        return 50;
+    }
+
+    @Override
     public int maxEndpointsPerProject() {
         return 50;
     }

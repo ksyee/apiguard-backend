@@ -25,7 +25,7 @@ public class HealthCheckScheduler {
 
     @Scheduled(fixedDelay = 60_000)
     public void scheduleHealthChecks() {
-        List<Endpoint> activeEndpoints = endpointRepository.findByIsActiveTrueAndDeletedFalse();
+        List<Endpoint> activeEndpoints = endpointRepository.findSchedulableActiveEndpoints();
 
         LocalDateTime now = LocalDateTime.now();
         List<Endpoint> dueEndpoints = activeEndpoints.stream()

@@ -3,6 +3,7 @@ package com.apiguard.backend.domain.statuspage.dto;
 import com.apiguard.backend.domain.statuspage.entity.StatusPage;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record StatusPageResponse(
     Long id,
@@ -10,7 +11,9 @@ public record StatusPageResponse(
     String title,
     String description,
     boolean isPublic,
-    LocalDateTime createdAt
+    LocalDateTime createdAt,
+    boolean allEndpoints,
+    List<Long> endpointIds
 ) {
     public static StatusPageResponse from(StatusPage statusPage) {
         return new StatusPageResponse(
@@ -19,7 +22,9 @@ public record StatusPageResponse(
             statusPage.getTitle(),
             statusPage.getDescription(),
             statusPage.isPublic(),
-            statusPage.getCreatedAt()
+            statusPage.getCreatedAt(),
+            statusPage.isAllEndpoints(),
+            List.copyOf(statusPage.getSelectedEndpointIds())
         );
     }
 }

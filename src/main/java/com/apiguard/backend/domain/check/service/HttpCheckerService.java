@@ -3,6 +3,8 @@ package com.apiguard.backend.domain.check.service;
 import com.apiguard.backend.domain.check.entity.CheckResult;
 import com.apiguard.backend.domain.check.entity.CheckStatus;
 import com.apiguard.backend.domain.endpoint.entity.Endpoint;
+import com.apiguard.backend.global.security.OutboundUrlGuard;
+import java.net.URI;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
@@ -21,6 +23,7 @@ import java.util.Map;
 public class HttpCheckerService {
 
     private final RestTemplate restTemplate;
+    private final OutboundUrlGuard outboundUrlGuard;
 
     public CheckResult check(Endpoint endpoint) {
         CheckResult firstAttempt = doCheck(endpoint);
@@ -40,8 +43,9 @@ public class HttpCheckerService {
         long startTime = System.nanoTime();
 
         try {
+            URI uri = outboundUrlGuard.validateHttpUrl(endpoint.getUrl(), "엔드포인트 URL");
             ResponseEntity<String> response = restTemplate.exchange(
-                endpoint.getUrl(),
+                uri,
                 org.springframework.http.HttpMethod.valueOf(endpoint.getHttpMethod().name()),
                 httpEntity,
                 String.class

@@ -733,8 +733,8 @@
 ### MVP 이후 추가 기능
 1. WebSocket 실시간 대시보드
 2. Response Body JSON 검증 (특정 필드 체크)
-3. 팀 협업 기능 (멀티 유저)
-4. 공개 Status Page (외부 공유용)
+3. 팀 협업 기능 고도화
+4. 공개 Status Page 고도화
 5. API 호출 로그 상세 조회
 6. Slack Bot 연동
 7. 모바일 앱 (React Native)
@@ -770,8 +770,23 @@
 - dev/test 설정의 고정 키를 dummy/env 기본값으로 정리하고, public release checklist와 OpenAPI breaking change demo fixture를 추가했습니다.
 - 검증: `GRADLE_USER_HOME=/home/ksy/wsl-workspace/apiguard/apiguard-backend/.gradle-local ./gradlew test bootJar --no-daemon` 통과.
 
+### 2026-05-20
+
+- 기능 보강을 진행했습니다.
+  - 워크스페이스 초대 요청에 역할 선택을 추가하고 `OWNER` 초대와 `ADMIN`의 관리자 초대를 제한했습니다.
+  - 알림 채널에 `WEBHOOK`을 추가하고 테스트 발송, 성공/실패 발송 이력 저장, 성공 발송 기준 Redis cooldown 처리를 반영했습니다.
+  - OpenAPI 스펙 소스 수정, 삭제, 활성화 토글 API를 추가하고 비활성 소스 체크를 차단했습니다.
+  - 공개 Status Page에 노출할 엔드포인트 선택 기능을 추가했습니다.
+  - PRO 구독 해지 API를 추가해 FREE 플랜 전환을 지원했습니다.
+- 문서를 최신화했습니다.
+  - Backend/Frontend API Spec, README, public release checklist, OpenAPI demo 문서에 변경된 API 계약과 운영 스키마 참고 사항을 반영했습니다.
+- 배포 안정화 작업을 진행했습니다.
+  - 운영 프로파일에 `SPRING_JPA_HIBERNATE_DDL_AUTO` 환경변수 기본값을 추가해 신규 데모 DB에서 스키마가 생성되도록 했습니다.
+  - 배포 smoke check를 `/health`와 DB-backed Status Page 404 확인으로 확장했습니다.
+- 검증: `./gradlew test`, `./gradlew bootJar`, 프론트 `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm build`, `pnpm exec playwright test` 통과.
+
 ---
 
 **작성일**: 2024-11-06  
 **예상 완료일**: 2025-01-29 (12주 후)  
-**마지막 업데이트**: 2026-05-18
+**마지막 업데이트**: 2026-05-20

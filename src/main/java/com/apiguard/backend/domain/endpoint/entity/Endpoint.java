@@ -98,12 +98,8 @@ public class Endpoint {
         if (httpMethod != null) {
             this.httpMethod = httpMethod;
         }
-        if (headers != null) {
-            this.headers = headers;
-        }
-        if (body != null) {
-            this.body = body;
-        }
+        this.headers = headers;
+        this.body = body;
         if (expectedStatusCode != null) {
             this.expectedStatusCode = expectedStatusCode;
         }

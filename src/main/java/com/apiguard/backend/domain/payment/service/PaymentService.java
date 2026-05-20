@@ -131,11 +131,13 @@ public class PaymentService {
         }
     }
 
+    @Transactional
     public SubscriptionStatusResponse getSubscriptionStatus(Long workspaceId) {
         workspaceService.getWorkspaceWithMemberCheck(workspaceId);
 
         Subscription subscription = subscriptionRepository.findByWorkspaceId(workspaceId)
             .orElseThrow(() -> new WorkspaceNotFoundException("구독 정보를 찾을 수 없습니다."));
+        subscription.downgradeExpiredProToFree();
 
         PlanLimitPolicy policy = subscriptionService.getPolicyForWorkspace(workspaceId);
         return SubscriptionStatusResponse.from(subscription, policy);
@@ -146,6 +148,20 @@ public class PaymentService {
         return paymentRepository.findByWorkspaceIdOrderByCreatedAtDesc(workspaceId).stream()
             .map(PaymentResponse::from)
             .toList();
+    }
+
+    @Transactional
+    public SubscriptionStatusResponse cancelSubscription(Long workspaceId) {
+        checkOwnerPermission(workspaceId);
+
+        Subscription subscription = getSubscription(workspaceId);
+        if (subscription.getPlanType() != PlanType.PRO || !subscription.isActive()) {
+            throw new PaymentConflictException("취소할 활성 PRO 구독이 없습니다.");
+        }
+
+        subscription.requestCancelAtPeriodEnd();
+        PlanLimitPolicy policy = subscriptionService.getPolicyForWorkspace(workspaceId);
+        return SubscriptionStatusResponse.from(subscription, policy);
     }
 
     private void checkOwnerPermission(Long workspaceId) {

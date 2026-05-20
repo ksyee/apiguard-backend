@@ -1,5 +1,6 @@
 package com.apiguard.backend.domain.alert.controller;
 
+import com.apiguard.backend.domain.alert.dto.AlertDeliveryResponse;
 import com.apiguard.backend.domain.alert.dto.AlertResponse;
 import com.apiguard.backend.domain.alert.dto.CreateAlertRequest;
 import com.apiguard.backend.domain.alert.dto.UpdateAlertRequest;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -53,5 +55,18 @@ public class AlertController {
     @PatchMapping("/alerts/{id}/toggle")
     public ApiResponse<AlertResponse> toggleAlert(@PathVariable Long id) {
         return ApiResponse.ok(alertService.toggleAlert(id));
+    }
+
+    @PostMapping("/alerts/{id}/test")
+    public ApiResponse<AlertDeliveryResponse> sendTestAlert(@PathVariable Long id) {
+        return ApiResponse.ok(alertService.sendTestAlert(id));
+    }
+
+    @GetMapping("/alerts/{id}/deliveries")
+    public ApiResponse<List<AlertDeliveryResponse>> getDeliveries(
+        @PathVariable Long id,
+        @RequestParam(defaultValue = "20") int limit
+    ) {
+        return ApiResponse.ok(alertService.getDeliveries(id, limit));
     }
 }

@@ -6,6 +6,8 @@ public interface PlanLimitPolicy {
 
     PlanType planType();
 
+    int maxProjects();
+
     int maxEndpointsPerProject();
 
     int minCheckIntervalSeconds();

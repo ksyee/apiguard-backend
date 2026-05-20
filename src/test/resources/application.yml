@@ -35,6 +35,10 @@ toss:
     secret-key: **REMOVED-FROM-HISTORY**
     client-key: **REMOVED-FROM-HISTORY**
 
+apiguard:
+  outbound:
+    allow-private-network: true
+
 security:
   whitelist:
     - /auth/**

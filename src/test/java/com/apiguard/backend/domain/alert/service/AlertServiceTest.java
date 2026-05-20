@@ -9,12 +9,16 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import com.apiguard.backend.domain.alert.dto.AlertDeliveryResponse;
 import com.apiguard.backend.domain.alert.dto.AlertResponse;
 import com.apiguard.backend.domain.alert.dto.CreateAlertRequest;
 import com.apiguard.backend.domain.alert.dto.UpdateAlertRequest;
 import com.apiguard.backend.domain.alert.entity.AlertConfig;
+import com.apiguard.backend.domain.alert.entity.AlertDelivery;
+import com.apiguard.backend.domain.alert.entity.AlertDeliveryStatus;
 import com.apiguard.backend.domain.alert.entity.AlertType;
 import com.apiguard.backend.domain.alert.repository.AlertConfigRepository;
+import com.apiguard.backend.domain.alert.repository.AlertDeliveryRepository;
 import com.apiguard.backend.domain.check.entity.CheckResult;
 import com.apiguard.backend.domain.check.entity.CheckStatus;
 import com.apiguard.backend.domain.check.repository.CheckResultRepository;
@@ -22,9 +26,12 @@ import com.apiguard.backend.domain.endpoint.entity.Endpoint;
 import com.apiguard.backend.domain.endpoint.entity.HttpMethod;
 import com.apiguard.backend.domain.endpoint.service.EndpointService;
 import com.apiguard.backend.domain.project.entity.Project;
+import com.apiguard.backend.domain.subscription.service.SubscriptionService;
 import com.apiguard.backend.domain.user.entity.Role;
 import com.apiguard.backend.domain.user.entity.User;
 import com.apiguard.backend.global.exception.AlertNotFoundException;
+import com.apiguard.backend.global.security.OutboundUrlGuard;
+import java.net.URI;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -46,10 +53,16 @@ class AlertServiceTest {
     private AlertConfigRepository alertConfigRepository;
 
     @Mock
+    private AlertDeliveryRepository alertDeliveryRepository;
+
+    @Mock
     private CheckResultRepository checkResultRepository;
 
     @Mock
     private EndpointService endpointService;
+
+    @Mock
+    private SubscriptionService subscriptionService;
 
     @Mock
     private List<NotificationService> notificationServices;
@@ -59,6 +72,9 @@ class AlertServiceTest {
 
     @Mock
     private ValueOperations<String, String> valueOperations;
+
+    @Mock
+    private OutboundUrlGuard outboundUrlGuard;
 
     @InjectMocks
     private AlertService alertService;
@@ -181,6 +197,10 @@ class AlertServiceTest {
         UpdateAlertRequest request = new UpdateAlertRequest(
             AlertType.SLACK, "https://hooks.slack.com/test", 5
         );
+        given(outboundUrlGuard.validateHttpUrl(
+            "https://hooks.slack.com/test",
+            "Slack Webhook URL"
+        )).willReturn(URI.create("https://hooks.slack.com/test"));
 
         // when
         AlertResponse response = alertService.updateAlert(1L, request);
@@ -189,6 +209,27 @@ class AlertServiceTest {
         assertThat(response.alertType()).isEqualTo(AlertType.SLACK);
         assertThat(response.target()).isEqualTo("https://hooks.slack.com/test");
         assertThat(response.threshold()).isEqualTo(5);
+    }
+
+    @Test
+    @DisplayName("이메일 알림 대상이 이메일 형식이 아니면 생성하지 않는다")
+    void createAlert_invalidEmail_throwsIllegalArgumentException() {
+        // given
+        User user = createUser(1L);
+        Project project = createProject(1L, user);
+        Endpoint endpoint = createEndpoint(1L, project);
+
+        given(endpointService.getEndpointWithWriteCheck(1L)).willReturn(endpoint);
+
+        CreateAlertRequest request = new CreateAlertRequest(
+            AlertType.EMAIL, "not-an-email", 3
+        );
+
+        // when & then
+        assertThatThrownBy(() -> alertService.createAlert(1L, request))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("이메일 알림 대상은 올바른 이메일 주소여야 합니다.");
+        verify(alertConfigRepository, never()).save(any(AlertConfig.class));
     }
 
     @Test
@@ -329,6 +370,8 @@ class AlertServiceTest {
         }
 
         given(stringRedisTemplate.opsForValue()).willReturn(valueOperations);
+        given(alertDeliveryRepository.save(any(AlertDelivery.class)))
+            .willAnswer(invocation -> invocation.getArgument(0));
 
         // when
         alertService.checkAndAlert(1L);
@@ -336,6 +379,42 @@ class AlertServiceTest {
         // then
         verify(mockNotification).send(eq(alertConfig), eq(endpoint), any());
         verify(valueOperations).set(eq("ALERT_SENT:1"), eq("1"), eq(Duration.ofMinutes(30)));
+    }
+
+    @Test
+    @DisplayName("테스트 알림 발송 성공 시 발송 이력을 저장한다")
+    void sendTestAlert_success() {
+        // given
+        User user = createUser(1L);
+        Project project = createProject(1L, user);
+        Endpoint endpoint = createEndpoint(1L, project);
+        AlertConfig alertConfig = createAlertConfig(1L, endpoint);
+
+        given(alertConfigRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(alertConfig));
+        given(endpointService.getEndpointWithWriteCheck(1L)).willReturn(endpoint);
+
+        NotificationService mockNotification = org.mockito.Mockito.mock(NotificationService.class);
+        given(mockNotification.supports(AlertType.EMAIL)).willReturn(true);
+        java.util.ArrayList<NotificationService> services = new java.util.ArrayList<>();
+        services.add(mockNotification);
+        try {
+            var field = AlertService.class.getDeclaredField("notificationServices");
+            field.setAccessible(true);
+            field.set(alertService, services);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        given(alertDeliveryRepository.save(any(AlertDelivery.class)))
+            .willAnswer(invocation -> invocation.getArgument(0));
+
+        // when
+        AlertDeliveryResponse response = alertService.sendTestAlert(1L);
+
+        // then
+        assertThat(response.status()).isEqualTo(AlertDeliveryStatus.SUCCESS);
+        assertThat(response.testDelivery()).isTrue();
+        verify(mockNotification).send(eq(alertConfig), eq(endpoint), any());
+        verify(alertDeliveryRepository).save(any(AlertDelivery.class));
     }
 
     @Test

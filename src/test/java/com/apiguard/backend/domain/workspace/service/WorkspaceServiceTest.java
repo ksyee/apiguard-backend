@@ -302,7 +302,7 @@ class WorkspaceServiceTest {
 
         // when
         WorkspaceMemberResponse response = workspaceService.inviteMember(1L,
-            new InviteMemberRequest("user2@email.com"));
+            new InviteMemberRequest("user2@email.com", WorkspaceRole.MEMBER));
 
         // then
         assertThat(response.userId()).isEqualTo(2L);
@@ -329,7 +329,7 @@ class WorkspaceServiceTest {
 
         // when & then
         assertThatThrownBy(() -> workspaceService.inviteMember(1L,
-            new InviteMemberRequest("user2@email.com")))
+            new InviteMemberRequest("user2@email.com", WorkspaceRole.MEMBER)))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("이미 워크스페이스의 멤버입니다.");
     }
@@ -349,7 +349,7 @@ class WorkspaceServiceTest {
 
         // when & then
         assertThatThrownBy(() -> workspaceService.inviteMember(1L,
-            new InviteMemberRequest("user2@email.com")))
+            new InviteMemberRequest("user2@email.com", WorkspaceRole.MEMBER)))
             .isInstanceOf(ForbiddenException.class)
             .hasMessage("멤버 초대는 ADMIN 이상만 가능합니다.");
     }
@@ -401,6 +401,26 @@ class WorkspaceServiceTest {
             new UpdateMemberRoleRequest(WorkspaceRole.MEMBER)))
             .isInstanceOf(ForbiddenException.class)
             .hasMessage("역할 변경은 OWNER만 가능합니다.");
+    }
+
+    @Test
+    @DisplayName("역할 변경으로 OWNER를 지정할 수 없음")
+    void updateMemberRole_toOwner_throwsIllegalArgumentException() {
+        // given
+        User currentUser = createUser(1L);
+        Workspace workspace = createWorkspace(1L);
+        WorkspaceMember ownerMember = createMember(1L, workspace, currentUser, WorkspaceRole.OWNER);
+
+        given(userService.getUserDetail()).willReturn(currentUser);
+        given(workspaceRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(workspace));
+        given(workspaceMemberRepository.findByWorkspaceIdAndUserId(1L, 1L))
+            .willReturn(Optional.of(ownerMember));
+
+        // when & then
+        assertThatThrownBy(() -> workspaceService.updateMemberRole(1L, 2L,
+            new UpdateMemberRoleRequest(WorkspaceRole.OWNER)))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("OWNER 역할은 역할 변경으로 지정할 수 없습니다.");
     }
 
     // -------------------------------------------------------------------------

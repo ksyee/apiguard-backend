@@ -1,7 +1,9 @@
 package com.apiguard.backend.domain.statuspage.entity;
 
 import com.apiguard.backend.domain.workspace.entity.Workspace;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.FetchType;
@@ -11,6 +13,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -52,6 +56,19 @@ public class StatusPage {
     @Builder.Default
     private boolean isPublic = true;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean allEndpoints = true;
+
+    @ElementCollection
+    @CollectionTable(
+        name = "status_page_endpoints",
+        joinColumns = @JoinColumn(name = "status_page_id")
+    )
+    @Column(name = "endpoint_id", nullable = false)
+    @Builder.Default
+    private Set<Long> selectedEndpointIds = new LinkedHashSet<>();
+
     @CreatedDate
     private LocalDateTime createdAt;
 
@@ -68,6 +85,14 @@ public class StatusPage {
         if (title != null) this.title = title;
         if (description != null) this.description = description;
         if (isPublic != null) this.isPublic = isPublic;
+    }
+
+    public void updateEndpointSelection(boolean allEndpoints, Set<Long> endpointIds) {
+        this.allEndpoints = allEndpoints;
+        this.selectedEndpointIds.clear();
+        if (!allEndpoints) {
+            this.selectedEndpointIds.addAll(endpointIds);
+        }
     }
 
     public void softDelete() {

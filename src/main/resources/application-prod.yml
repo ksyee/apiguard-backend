@@ -3,6 +3,9 @@ spring:
     url: ${DB_URL}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
   data:
     redis:
       host: ${REDIS_HOST}
@@ -24,6 +27,10 @@ toss:
   payments:
     secret-key: ${TOSS_SECRET_KEY}
     client-key: ${TOSS_CLIENT_KEY}
+
+apiguard:
+  outbound:
+    allow-private-network: ${APIGUARD_OUTBOUND_ALLOW_PRIVATE_NETWORK:false}
 
 security:
   whitelist:

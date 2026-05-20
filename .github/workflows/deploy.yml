@@ -96,7 +96,11 @@ jobs:
 
             for i in $(seq 1 12); do
               if curl -fsS "http://127.0.0.1:${APP_PORT:-8080}/health" >/dev/null; then
-                exit 0
+                status_code="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:${APP_PORT:-8080}/status/__deploy_smoke_missing__")"
+                if [ "${status_code}" = "404" ]; then
+                  exit 0
+                fi
+                echo "DB-backed smoke check returned HTTP ${status_code}; expected 404"
               fi
               sleep 5
             done

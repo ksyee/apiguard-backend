@@ -60,6 +60,10 @@ public class CheckService {
     public void performCheck(Long endpointId) {
         Endpoint endpoint = endpointRepository.findByIdAndDeletedFalse(endpointId)
             .orElseThrow(() -> new EndpointNotFoundException("엔드포인트를 찾을 수 없습니다."));
+        if (endpoint.getProject().isDeleted()
+            || (endpoint.getProject().getWorkspace() != null && endpoint.getProject().getWorkspace().isDeleted())) {
+            throw new EndpointNotFoundException("엔드포인트를 찾을 수 없습니다.");
+        }
         CheckResult result = httpCheckerService.check(endpoint);
         CheckResult saved = checkResultRepository.save(result);
         endpoint.updateLastCheckedAt();

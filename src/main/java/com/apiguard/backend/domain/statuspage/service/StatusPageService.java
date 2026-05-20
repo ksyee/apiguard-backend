@@ -22,7 +22,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -55,6 +57,10 @@ public class StatusPageService {
             .description(request.description())
             .isPublic(true)
             .build();
+        statusPage.updateEndpointSelection(
+            shouldPublishAll(request.allEndpoints(), request.endpointIds()),
+            validateEndpointIds(workspaceId, request.endpointIds())
+        );
 
         return StatusPageResponse.from(statusPageRepository.save(statusPage));
     }
@@ -76,6 +82,12 @@ public class StatusPageService {
             .orElseThrow(() -> new StatusPageNotFoundException("상태 페이지를 찾을 수 없습니다."));
 
         statusPage.update(request.title(), request.description(), request.isPublic());
+        if (request.allEndpoints() != null || request.endpointIds() != null) {
+            statusPage.updateEndpointSelection(
+                shouldPublishAll(request.allEndpoints(), request.endpointIds()),
+                validateEndpointIds(workspaceId, request.endpointIds())
+            );
+        }
 
         return StatusPageResponse.from(statusPage);
     }
@@ -102,7 +114,7 @@ public class StatusPageService {
         }
 
         Long workspaceId = statusPage.getWorkspace().getId();
-        List<Endpoint> endpoints = endpointRepository.findByProject_Workspace_IdAndDeletedFalseAndIsActiveTrue(workspaceId);
+        List<Endpoint> endpoints = resolvePublicEndpoints(statusPage, workspaceId);
 
         LocalDateTime since = LocalDateTime.now().minusHours(24);
         List<PublicStatusPageResponse.EndpointStatus> endpointStatuses = new ArrayList<>();
@@ -149,5 +161,45 @@ public class StatusPageService {
             overallStatus,
             endpointStatuses
         );
+    }
+
+    private Set<Long> validateEndpointIds(Long workspaceId, List<Long> endpointIds) {
+        if (endpointIds == null || endpointIds.isEmpty()) {
+            return Set.of();
+        }
+
+        List<Endpoint> workspaceEndpoints = endpointRepository.findByProject_Workspace_IdAndDeletedFalse(workspaceId);
+        Set<Long> allowedIds = workspaceEndpoints.stream()
+            .map(Endpoint::getId)
+            .collect(java.util.stream.Collectors.toSet());
+
+        LinkedHashSet<Long> selectedIds = new LinkedHashSet<>(endpointIds);
+        if (!allowedIds.containsAll(selectedIds)) {
+            throw new IllegalArgumentException("상태 페이지에 포함할 수 없는 엔드포인트가 있습니다.");
+        }
+        return selectedIds;
+    }
+
+    private List<Endpoint> resolvePublicEndpoints(StatusPage statusPage, Long workspaceId) {
+        List<Endpoint> endpoints = endpointRepository
+            .findByProject_Workspace_IdAndDeletedFalseAndIsActiveTrue(workspaceId);
+        if (statusPage.isAllEndpoints()) {
+            return endpoints;
+        }
+
+        Set<Long> selectedIds = statusPage.getSelectedEndpointIds();
+        if (selectedIds == null || selectedIds.isEmpty()) {
+            return List.of();
+        }
+        return endpoints.stream()
+            .filter(endpoint -> selectedIds.contains(endpoint.getId()))
+            .toList();
+    }
+
+    private boolean shouldPublishAll(Boolean allEndpoints, List<Long> endpointIds) {
+        if (allEndpoints != null) {
+            return allEndpoints;
+        }
+        return endpointIds == null;
     }
 }

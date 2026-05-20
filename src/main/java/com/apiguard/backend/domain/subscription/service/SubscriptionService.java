@@ -2,6 +2,7 @@ package com.apiguard.backend.domain.subscription.service;
 
 import com.apiguard.backend.domain.alert.repository.AlertConfigRepository;
 import com.apiguard.backend.domain.endpoint.repository.EndpointRepository;
+import com.apiguard.backend.domain.project.repository.ProjectRepository;
 import com.apiguard.backend.domain.subscription.entity.PlanType;
 import com.apiguard.backend.domain.subscription.entity.Subscription;
 import com.apiguard.backend.domain.subscription.repository.SubscriptionRepository;
@@ -23,6 +24,7 @@ public class SubscriptionService {
 
     private final SubscriptionRepository subscriptionRepository;
     private final WorkspaceRepository workspaceRepository;
+    private final ProjectRepository projectRepository;
     private final EndpointRepository endpointRepository;
     private final AlertConfigRepository alertConfigRepository;
     private final List<PlanLimitPolicy> planLimitPolicies;
@@ -32,6 +34,16 @@ public class SubscriptionService {
             .filter(Subscription::isActive)
             .map(sub -> getPolicyByPlanType(sub.getPlanType()))
             .orElseGet(this::getFreePlanPolicy);
+    }
+
+    public void validateProjectCount(Long workspaceId) {
+        PlanLimitPolicy policy = getPolicyForWorkspace(workspaceId);
+        long count = projectRepository.countByWorkspaceIdAndDeletedFalse(workspaceId);
+        if (count >= policy.maxProjects()) {
+            throw new PlanLimitExceededException(
+                "프로젝트 수 제한에 도달했습니다. 현재 플랜의 최대 프로젝트 수: " + policy.maxProjects()
+            );
+        }
     }
 
     public void validateEndpointCount(Long workspaceId, Long projectId) {

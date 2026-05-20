@@ -32,20 +32,23 @@ ApiGuard라는 이름은 API 운영 안정성을 지킨다는 의미입니다. �
 - 스케줄러 기반 주기적 헬스체크 실행
 - 응답 상태/성공률/시간대별 통계 제공
 - 연속 실패 기반 Incident 생성 및 회복 시 resolved 처리
-- 연속 실패 임계치 기반 알림 트리거
-- Redis 쿨다운 기반 중복 알림 방지
-- OpenAPI snapshot 저장 및 breaking change 감지
+- 연속 실패 임계치 기반 이메일/Slack/Webhook 알림 트리거
+- Redis 쿨다운 기반 중복 알림 방지 및 알림 발송 이력 저장
+- OpenAPI snapshot 저장, breaking change 감지, 스펙 소스 수정/비활성화 관리
+- 공개 Status Page 생성 및 공개 엔드포인트 선택
+- 워크스페이스 멤버 초대 시 역할 지정
 - JWT 인증/인가 및 공통 응답 포맷 표준화
-- FREE/PRO 플랜별 기능 제한 정책 적용
+- FREE/PRO 플랜별 기능 제한 정책 적용 및 PRO 구독 해지
 
 ## 동작 흐름
 
 1. 사용자가 워크스페이스와 프로젝트를 생성하고 엔드포인트를 등록합니다.
 2. 스케줄러가 활성 엔드포인트를 주기적으로 검사합니다.
 3. 체크 결과가 누적되며, 통계 API로 가시화 가능한 지표가 만들어집니다.
-4. 실패가 임계치를 넘으면 Incident를 생성하고 이메일/Slack 채널로 알림을 보냅니다.
-5. 동일 알림은 Redis 쿨다운으로 중복 발송을 억제합니다.
+4. 실패가 임계치를 넘으면 Incident를 생성하고 이메일/Slack/Webhook 채널로 알림을 보냅니다.
+5. 알림 발송 결과를 저장하고, 성공한 동일 알림은 Redis 쿨다운으로 중복 발송을 억제합니다.
 6. OpenAPI 스펙 소스는 snapshot을 저장하고 이전 버전과 비교해 breaking change를 기록합니다.
+7. 공개 Status Page는 선택된 활성 엔드포인트만 외부에 노출합니다.
 
 ## Key Scenarios
 
@@ -55,6 +58,7 @@ ApiGuard라는 이름은 API 운영 안정성을 지킨다는 의미입니다. �
 4. Redis cooldown으로 중복 알림 방지
 5. OpenAPI snapshot 비교
 6. Breaking Change 감지 및 계약 변경 이력 관리
+7. 공개 Status Page로 운영 상태 공유
 
 ## 5분 데모 시나리오
 
@@ -81,8 +85,9 @@ Check interval: 60
 ```
 
 4. 수동 체크를 3회 실행해 `AVAILABILITY` Incident가 생성되는지 확인합니다.
-5. 알림 설정을 추가하고 동일 장애를 반복해 Redis cooldown이 중복 발송을 억제하는지 확인합니다.
-6. OpenAPI demo fixture를 사용해 snapshot 저장 후 breaking change 감지를 확인합니다.
+5. 알림 설정을 추가하고 테스트 알림 발송, 발송 이력, Redis cooldown 중복 억제를 확인합니다.
+6. OpenAPI demo fixture를 사용해 snapshot 저장 후 breaking change 감지를 확인하고, 스펙 소스 수정/비활성화를 확인합니다.
+7. Status Page를 생성한 뒤 공개할 엔드포인트를 선택하고 `/status/{slug}`에서 노출 범위를 확인합니다.
 
 자세한 OpenAPI diff 재현 절차와 fixture는 `docs/openapi-breaking-change-demo.md`에 있습니다.
 
@@ -98,14 +103,18 @@ flowchart LR
     Scheduler[HealthCheckScheduler]
     Checker[HttpChecker/CheckService]
     Alert[AlertService]
+    Delivery[AlertDelivery]
     Incident[IncidentService]
     Spec[ApiSpecService]
+    StatusPage[StatusPageService]
+    Payment[PaymentService]
     PG[(PostgreSQL)]
     Redis[(Redis)]
     ExtAPI[Target APIs]
     OpenAPI[OpenAPI JSON]
     Email[Email Channel]
     Slack[Slack Channel]
+    Webhook[Webhook Channel]
 
     Client --> API
     API --> Auth
@@ -119,10 +128,14 @@ flowchart LR
     Scheduler --> Alert
     Alert --> PG
     Alert --> Redis
+    Alert --> Delivery
     Alert --> Email
     Alert --> Slack
+    Alert --> Webhook
     Spec --> OpenAPI
     Spec --> PG
+    StatusPage --> PG
+    Payment --> PG
 ```
 
 ### 체크 및 알림 시퀀스
@@ -145,8 +158,9 @@ sequenceDiagram
     A->>DB: 최근 결과 조회
     A->>R: 중복 알림 키 확인(TTL)
     alt 임계치 이상 + 미발송
-        A->>N: 이메일/Slack 발송
-        A->>R: 발송 키 저장(쿨다운)
+        A->>N: 이메일/Slack/Webhook 발송
+        A->>DB: 발송 성공/실패 이력 저장
+        A->>R: 성공 발송 키 저장(쿨다운)
     else 조건 미충족 또는 중복
         A-->>S: skip
     end
@@ -158,9 +172,11 @@ sequenceDiagram
 - **Stateful Data + Stateless Auth**: 데이터 일관성은 RDB(PostgreSQL)에서, 인증 상태는 JWT 기반 무상태 방식으로 처리합니다.
 - **Async Check Execution**: 스케줄러는 체크 대상을 병렬 실행해 대량 엔드포인트에서도 처리량을 확보합니다.
 - **Incident State Management**: 체크 결과와 장애 이력을 분리해 운영 관점의 open/resolved 상태를 관리합니다.
-- **Alert Deduplication**: Redis TTL 키로 동일 알림의 재발송을 제한해 알림 폭주를 방지합니다.
-- **Contract Change Detection**: OpenAPI snapshot을 저장하고 path/method 삭제, 필수 parameter/body 추가, response field 삭제/type 변경 같은 breaking change를 비교합니다.
-- **Policy-Driven Subscription**: 플랜 제한은 정책 객체(`PlanLimitPolicy`)로 분리해 기능 확장 시 변경 범위를 최소화합니다.
+- **Alert Deduplication & Delivery History**: Redis TTL 키로 동일 알림의 재발송을 제한하고, 발송 성공/실패 이력을 RDB에 저장합니다.
+- **Contract Change Detection**: OpenAPI snapshot을 저장하고 path/method 삭제, 필수 parameter/body 추가, response field 삭제/type 변경 같은 breaking change를 비교합니다. 스펙 소스는 수정, 삭제, 활성화 토글과 자동 주기 검사를 지원합니다.
+- **Public Status Page**: 워크스페이스별 공개 페이지를 만들고 외부에 노출할 엔드포인트를 선택해 상태 요약을 제공합니다.
+- **Outbound URL Guard**: 헬스체크, OpenAPI fetch, Slack/Webhook 발송 URL은 `http/https`만 허용하고 운영 기본값으로 private network/metadata endpoint를 차단합니다.
+- **Policy-Driven Subscription**: 플랜 제한은 정책 객체(`PlanLimitPolicy`)로 분리해 기능 확장 시 변경 범위를 최소화하며, PRO 구독 해지는 결제 기간 종료 시점으로 예약합니다.
 
 ## 도메인 구성
 
@@ -173,12 +189,14 @@ sequenceDiagram
 - `incident`: 연속 실패, 성능 저하, 계약 변경 Incident 이력 관리
 - `alert`: 실패 기반 알림 정책 및 채널 관리
 - `apispec`: OpenAPI snapshot, diff, breaking change 관리
+- `statuspage`: 공개 상태 페이지와 공개 엔드포인트 선택 관리
 - `subscription/payment`: 플랜 제약 및 결제 상태 관리
 
 ## 플랜 정책
 
 | 항목 | FREE | PRO |
 |---|---:|---:|
+| 워크스페이스당 프로젝트 수 | 3 | 50 |
 | 프로젝트당 엔드포인트 수 | 5 | 50 |
 | 최소 체크 주기(초) | 300 | 60 |
 | 엔드포인트당 알림 채널 수 | 1 | 제한 없음 |
@@ -204,6 +222,7 @@ sequenceDiagram
 ### 운영 환경변수
 
 - `SPRING_PROFILES_ACTIVE=prod`
+- `SPRING_JPA_HIBERNATE_DDL_AUTO` (기본값: `update`)
 - `DB_URL`
 - `DB_USERNAME`
 - `DB_PASSWORD`
@@ -232,6 +251,15 @@ docker compose -f docker-compose.server.yml up -d --build
 - `Dockerfile.deploy`: 배포용 JAR를 컨테이너 이미지로 패키징
 - `docker-compose.server.yml`: 앱 + PostgreSQL + Redis 운영 배포 구성
 - `.env.example`: 운영 환경변수 예시
+
+### 운영 스키마 변경 참고
+
+이번 기능 기준으로 운영 DB에는 알림 발송 이력과 Status Page 엔드포인트 선택 저장소가 필요합니다.
+
+- `alert_deliveries`: 알림 채널, 대상, 성공/실패, 테스트 발송 여부, 오류 메시지, 발송 시각 저장
+- `status_page_endpoints`: Status Page별 공개 엔드포인트 ID 목록 저장
+
+운영 프로파일의 기본값은 현재 데모/스테이징 배포 안정성을 위해 `SPRING_JPA_HIBERNATE_DDL_AUTO=update`입니다. 장기 운영으로 전환할 때는 Flyway/Liquibase 마이그레이션을 추가하고 `SPRING_JPA_HIBERNATE_DDL_AUTO=validate`로 바꾸는 구성을 권장합니다.
 
 ## GitHub Actions
 

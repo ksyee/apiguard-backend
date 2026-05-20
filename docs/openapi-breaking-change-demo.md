@@ -39,3 +39,4 @@ cp docs/demo/openapi/changed-openapi.json /tmp/apiguard-openapi/openapi.json
 
 4. Run the spec check again.
 5. Confirm that the diff contains the rules listed above and opens a `CONTRACT_CHANGE` incident for the project.
+6. Optionally edit the source name/URL, toggle it inactive, and confirm that inactive sources cannot run checks until re-enabled.

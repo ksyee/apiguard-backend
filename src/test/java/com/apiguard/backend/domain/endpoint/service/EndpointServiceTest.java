@@ -13,6 +13,7 @@ import com.apiguard.backend.domain.endpoint.entity.HttpMethod;
 import com.apiguard.backend.domain.endpoint.repository.EndpointRepository;
 import com.apiguard.backend.domain.project.entity.Project;
 import com.apiguard.backend.domain.project.service.ProjectService;
+import com.apiguard.backend.domain.subscription.service.FreePlanLimitPolicy;
 import com.apiguard.backend.domain.subscription.service.SubscriptionService;
 import com.apiguard.backend.domain.user.entity.Role;
 import com.apiguard.backend.domain.user.entity.User;
@@ -139,6 +140,29 @@ class EndpointServiceTest {
         assertThat(response.url()).isEqualTo("https://api.example.com/health");
         assertThat(response.httpMethod()).isEqualTo(HttpMethod.GET);
         assertThat(response.headers()).containsEntry("Authorization", "Bearer token");
+    }
+
+    @Test
+    @DisplayName("워크스페이스 엔드포인트 생성 시 체크 주기 기본값은 플랜 최소 주기를 따른다")
+    void createEndpoint_workspaceDefaultInterval_usesPlanMinimum() {
+        // given
+        User owner = createUser(1L);
+        Workspace workspace = createWorkspace(1L, owner);
+        Project project = createWorkspaceProject(1L, owner, workspace);
+        given(projectService.getProjectWithMemberCheck(1L)).willReturn(project);
+        given(subscriptionService.getPolicyForWorkspace(1L)).willReturn(new FreePlanLimitPolicy());
+        given(endpointRepository.save(any(Endpoint.class)))
+            .willAnswer(invocation -> invocation.getArgument(0));
+
+        CreateEndpointRequest request = new CreateEndpointRequest(
+            "https://api.example.com/health", HttpMethod.GET, null, null, 200, null
+        );
+
+        // when
+        EndpointResponse response = endpointService.createEndpoint(1L, request);
+
+        // then
+        assertThat(response.checkInterval()).isEqualTo(300);
     }
 
     @Test
@@ -323,6 +347,39 @@ class EndpointServiceTest {
 
         // then
         assertThat(response.headers()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("엔드포인트 수정 시 headers와 body에 null을 전달하면 기존 값이 비워진다")
+    void updateEndpoint_clearNullableRequestFields() {
+        // given
+        User user = createUser(1L);
+        Project project = createProject(1L, user);
+        Endpoint endpoint = Endpoint.builder()
+            .id(1L)
+            .project(project)
+            .url("https://api.example.com/health")
+            .httpMethod(HttpMethod.POST)
+            .headers(Map.of("Authorization", "Bearer token"))
+            .body("{\"enabled\":true}")
+            .expectedStatusCode(200)
+            .checkInterval(60)
+            .isActive(true)
+            .build();
+
+        given(userService.getUserDetail()).willReturn(user);
+        given(endpointRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(endpoint));
+
+        UpdateEndpointRequest request = new UpdateEndpointRequest(
+            "https://api.example.com/health", HttpMethod.POST, null, null, 200, 60
+        );
+
+        // when
+        EndpointResponse response = endpointService.updateEndpoint(1L, request);
+
+        // then
+        assertThat(response.headers()).isNull();
+        assertThat(response.body()).isNull();
     }
 
     @Test

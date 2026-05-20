@@ -33,6 +33,10 @@ toss:
     secret-key: ${TOSS_SECRET_KEY:**REMOVED-FROM-HISTORY**}
     client-key: ${TOSS_CLIENT_KEY:**REMOVED-FROM-HISTORY**}
 
+apiguard:
+  outbound:
+    allow-private-network: ${APIGUARD_OUTBOUND_ALLOW_PRIVATE_NETWORK:true}
+
 security:
   whitelist:
     - /auth/** # 로그인, 토큰 재발급 등

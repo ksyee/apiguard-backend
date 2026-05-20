@@ -88,7 +88,7 @@ class HealthCheckSchedulerTest {
         Project project = createProject(1L, user);
         Endpoint endpoint = createEndpoint(1L, project, null);
 
-        given(endpointRepository.findByIsActiveTrueAndDeletedFalse())
+        given(endpointRepository.findSchedulableActiveEndpoints())
             .willReturn(List.of(endpoint));
         willDoNothing().given(checkService).performCheck(anyLong());
 
@@ -107,7 +107,7 @@ class HealthCheckSchedulerTest {
         Project project = createProject(1L, user);
         Endpoint endpoint = createEndpoint(1L, project, LocalDateTime.now());
 
-        given(endpointRepository.findByIsActiveTrueAndDeletedFalse())
+        given(endpointRepository.findSchedulableActiveEndpoints())
             .willReturn(List.of(endpoint));
 
         // when
@@ -126,7 +126,7 @@ class HealthCheckSchedulerTest {
         Endpoint endpoint1 = createEndpoint(1L, project, null);
         Endpoint endpoint2 = createEndpoint(2L, project, null);
 
-        given(endpointRepository.findByIsActiveTrueAndDeletedFalse())
+        given(endpointRepository.findSchedulableActiveEndpoints())
             .willReturn(List.of(endpoint1, endpoint2));
 
         willThrow(new RuntimeException("체크 실패")).given(checkService).performCheck(endpoint1.getId());

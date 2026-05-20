@@ -160,10 +160,18 @@ public class WorkspaceService {
         Workspace workspace = workspaceRepository.findByIdAndDeletedFalse(workspaceId)
             .orElseThrow(() -> new WorkspaceNotFoundException("워크스페이스를 찾을 수 없습니다."));
 
+        WorkspaceRole inviteRole = request.role() != null ? request.role() : WorkspaceRole.MEMBER;
+        if (inviteRole == WorkspaceRole.OWNER) {
+            throw new IllegalArgumentException("OWNER 역할은 초대 시 지정할 수 없습니다.");
+        }
+        if (inviteRole == WorkspaceRole.ADMIN && currentMember.getRole() != WorkspaceRole.OWNER) {
+            throw new ForbiddenException("ADMIN 초대는 OWNER만 가능합니다.");
+        }
+
         WorkspaceMember newMember = WorkspaceMember.builder()
             .workspace(workspace)
             .user(invitedUser)
-            .role(WorkspaceRole.MEMBER)
+            .role(inviteRole)
             .build();
 
         WorkspaceMember saved = workspaceMemberRepository.save(newMember);
@@ -199,6 +207,10 @@ public class WorkspaceService {
 
         if (currentUser.getId().equals(userId)) {
             throw new IllegalArgumentException("자기 자신의 역할은 변경할 수 없습니다.");
+        }
+
+        if (request.role() == WorkspaceRole.OWNER) {
+            throw new IllegalArgumentException("OWNER 역할은 역할 변경으로 지정할 수 없습니다.");
         }
 
         WorkspaceMember targetMember = workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, userId)

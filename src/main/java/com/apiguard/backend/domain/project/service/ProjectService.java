@@ -5,6 +5,7 @@ import com.apiguard.backend.domain.project.dto.ProjectResponse;
 import com.apiguard.backend.domain.project.dto.UpdateProjectRequest;
 import com.apiguard.backend.domain.project.entity.Project;
 import com.apiguard.backend.domain.project.repository.ProjectRepository;
+import com.apiguard.backend.domain.subscription.service.SubscriptionService;
 import com.apiguard.backend.domain.user.entity.User;
 import com.apiguard.backend.domain.user.service.UserService;
 import com.apiguard.backend.domain.workspace.entity.Workspace;
@@ -32,10 +33,12 @@ public class ProjectService {
     private final WorkspaceService workspaceService;
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
+    private final SubscriptionService subscriptionService;
 
     @Transactional
     public ProjectResponse createProject(Long workspaceId, CreateProjectRequest request) {
         workspaceService.checkWritePermission(workspaceId);
+        subscriptionService.validateProjectCount(workspaceId);
         Workspace workspace = workspaceRepository.findByIdAndDeletedFalse(workspaceId)
             .orElseThrow(() -> new WorkspaceNotFoundException("워크스페이스를 찾을 수 없습니다."));
 

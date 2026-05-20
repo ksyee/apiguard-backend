@@ -12,6 +12,11 @@ public class FreePlanLimitPolicy implements PlanLimitPolicy {
     }
 
     @Override
+    public int maxProjects() {
+        return 3;
+    }
+
+    @Override
     public int maxEndpointsPerProject() {
         return 5;
     }

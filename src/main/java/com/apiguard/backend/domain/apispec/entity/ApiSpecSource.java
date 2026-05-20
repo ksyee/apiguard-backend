@@ -68,6 +68,22 @@ public class ApiSpecSource {
         this.lastCheckedAt = LocalDateTime.now();
     }
 
+    public void update(String name, String specUrl, Boolean active) {
+        if (name != null) {
+            this.name = name;
+        }
+        if (specUrl != null) {
+            this.specUrl = specUrl;
+        }
+        if (active != null) {
+            this.active = active;
+        }
+    }
+
+    public void toggleActive() {
+        this.active = !this.active;
+    }
+
     public void softDelete() {
         this.deleted = true;
         this.deletedAt = LocalDateTime.now();

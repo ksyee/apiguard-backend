@@ -9,3 +9,9 @@ toss:
   payments:
     secret-key: ${TOSS_SECRET_KEY}
     client-key: ${TOSS_CLIENT_KEY}
+apiguard:
+  apispec:
+    auto-check-enabled: ${APIGUARD_APISPEC_AUTO_CHECK_ENABLED:true}
+    check-fixed-delay-ms: ${APIGUARD_APISPEC_CHECK_FIXED_DELAY_MS:300000}
+  outbound:
+    allow-private-network: ${APIGUARD_OUTBOUND_ALLOW_PRIVATE_NETWORK:false}
