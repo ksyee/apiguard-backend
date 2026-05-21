@@ -67,6 +67,7 @@ class PaymentServiceTest {
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(paymentService, "clientKey", "test-client-key");
+        ReflectionTestUtils.setField(paymentService, "customerKeySecret", "test-customer-key-secret");
     }
 
     @Test
@@ -86,6 +87,9 @@ class PaymentServiceTest {
         assertThat(response.orderId()).startsWith("apiguard-1-");
         assertThat(response.amount()).isEqualTo(19_900L);
         assertThat(response.clientKey()).isEqualTo("test-client-key");
+        assertThat(response.customerKey()).startsWith("apiguard_");
+        assertThat(response.customerEmail()).isEqualTo("user1@email.com");
+        assertThat(response.customerName()).isEqualTo("tester1");
         verify(paymentRepository).save(any(Payment.class));
     }
 
@@ -193,13 +197,11 @@ class PaymentServiceTest {
     @DisplayName("이미 처리된 주문이면 confirmPayment는 409를 던진다")
     void confirmPayment_alreadyProcessed_throwsConflict(PaymentStatus status) {
         Workspace workspace = createWorkspace(1L);
-        Subscription subscription = createSubscription(workspace, PlanType.FREE, null);
         Payment payment = createPayment(workspace, "order-1", 19_900L, status);
         ConfirmPaymentRequest request = new ConfirmPaymentRequest("payment-key", "order-1", 19_900L);
 
         given(workspaceService.getMemberRole(1L)).willReturn(WorkspaceRole.OWNER);
         given(paymentRepository.findByOrderId("order-1")).willReturn(Optional.of(payment));
-        given(subscriptionRepository.findByWorkspaceId(1L)).willReturn(Optional.of(subscription));
 
         assertThatThrownBy(() -> paymentService.confirmPayment(1L, request))
             .isInstanceOf(PaymentConflictException.class)
@@ -210,13 +212,11 @@ class PaymentServiceTest {
     @DisplayName("결제 금액이 다르면 confirmPayment는 FAILED 처리 후 400을 던진다")
     void confirmPayment_amountMismatch_marksFailed() {
         Workspace workspace = createWorkspace(1L);
-        Subscription subscription = createSubscription(workspace, PlanType.FREE, null);
         Payment payment = createPayment(workspace, "order-1", 19_900L, PaymentStatus.PENDING);
         ConfirmPaymentRequest request = new ConfirmPaymentRequest("payment-key", "order-1", 9_900L);
 
         given(workspaceService.getMemberRole(1L)).willReturn(WorkspaceRole.OWNER);
         given(paymentRepository.findByOrderId("order-1")).willReturn(Optional.of(payment));
-        given(subscriptionRepository.findByWorkspaceId(1L)).willReturn(Optional.of(subscription));
 
         assertThatThrownBy(() -> paymentService.confirmPayment(1L, request))
             .isInstanceOf(PaymentValidationException.class)
@@ -326,6 +326,23 @@ class PaymentServiceTest {
             .hasMessage("이미 PRO 플랜을 구독 중입니다.");
 
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.CANCELLED);
+    }
+
+    @Test
+    @DisplayName("이미 성공 처리된 같은 주문과 paymentKey면 confirmPayment는 멱등하게 성공 응답을 반환한다")
+    void confirmPayment_alreadySuccessfulSamePaymentKey_returnsSuccess() {
+        Workspace workspace = createWorkspace(1L);
+        Payment payment = createPayment(workspace, "order-1", 19_900L, PaymentStatus.PENDING);
+        payment.markSuccess("payment-key");
+        ConfirmPaymentRequest request = new ConfirmPaymentRequest("payment-key", "order-1", 19_900L);
+
+        given(workspaceService.getMemberRole(1L)).willReturn(WorkspaceRole.OWNER);
+        given(paymentRepository.findByOrderId("order-1")).willReturn(Optional.of(payment));
+
+        PaymentResponse response = paymentService.confirmPayment(1L, request);
+
+        assertThat(response.status()).isEqualTo(PaymentStatus.SUCCESS);
+        assertThat(response.paymentKey()).isEqualTo("payment-key");
     }
 
     @Test

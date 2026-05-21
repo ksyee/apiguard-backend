@@ -348,7 +348,10 @@ Response `200`
     "orderId": "apiguard-1-a1b2c3d4e5f6",
     "amount": 19900,
     "orderName": "ApiGuard PRO 플랜 (1개월)",
-    "clientKey": "test_ck_..."
+    "clientKey": "test_ck_...",
+    "customerKey": "apiguard_xxx",
+    "customerEmail": "owner@example.com",
+    "customerName": "Owner"
   }
 }
 ```

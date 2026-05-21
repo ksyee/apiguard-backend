@@ -4,5 +4,8 @@ public record PreparePaymentResponse(
     String orderId,
     Long amount,
     String orderName,
-    String clientKey
+    String clientKey,
+    String customerKey,
+    String customerEmail,
+    String customerName
 ) {}

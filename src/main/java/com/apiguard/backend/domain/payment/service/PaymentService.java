@@ -29,7 +29,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 
@@ -49,6 +54,9 @@ public class PaymentService {
 
     @Value("${toss.payments.client-key}")
     private String clientKey;
+
+    @Value("${jwt.secret}")
+    private String customerKeySecret;
 
     @Transactional
     public PreparePaymentResponse preparePayment(Long workspaceId) {
@@ -74,7 +82,10 @@ public class PaymentService {
             orderId,
             PRO_PLAN_AMOUNT,
             "ApiGuard PRO 플랜 (1개월)",
-            clientKey
+            clientKey,
+            buildCustomerKey(workspaceId),
+            workspace.getOwner().getEmail(),
+            workspace.getOwner().getNickname()
         );
     }
 
@@ -91,21 +102,28 @@ public class PaymentService {
             throw new ForbiddenException("해당 주문에 대한 권한이 없습니다.");
         }
 
-        Subscription subscription = getSubscription(workspaceId);
-        if (subscription.getPlanType() == PlanType.PRO && subscription.isActive()) {
+        if (!payment.getAmount().equals(request.amount())) {
             if (payment.getStatus() == PaymentStatus.PENDING) {
-                payment.markCancelled();
+                payment.markFailed();
             }
-            throw new PaymentConflictException("이미 PRO 플랜을 구독 중입니다.");
+            throw new PaymentValidationException("결제 금액이 일치하지 않습니다.");
+        }
+
+        if (payment.getStatus() == PaymentStatus.SUCCESS) {
+            if (request.paymentKey().equals(payment.getPaymentKey())) {
+                return PaymentResponse.from(payment);
+            }
+            throw new PaymentConflictException("이미 처리된 주문입니다.");
         }
 
         if (payment.getStatus() != PaymentStatus.PENDING) {
             throw new PaymentConflictException("이미 처리된 주문입니다.");
         }
 
-        if (!payment.getAmount().equals(request.amount())) {
-            payment.markFailed();
-            throw new PaymentValidationException("결제 금액이 일치하지 않습니다.");
+        Subscription subscription = getSubscription(workspaceId);
+        if (subscription.getPlanType() == PlanType.PRO && subscription.isActive()) {
+            payment.markCancelled();
+            throw new PaymentConflictException("이미 PRO 플랜을 구독 중입니다.");
         }
 
         try {
@@ -206,6 +224,23 @@ public class PaymentService {
         }
         if (!tossResponse.isApproved()) {
             throw new ExternalPaymentException("결제 승인이 거부되었습니다.");
+        }
+    }
+
+    private String buildCustomerKey(Long workspaceId) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            SecretKeySpec keySpec = new SecretKeySpec(
+                customerKeySecret.getBytes(StandardCharsets.UTF_8),
+                "HmacSHA256"
+            );
+            mac.init(keySpec);
+
+            byte[] digest = mac.doFinal(("workspace:" + workspaceId).getBytes(StandardCharsets.UTF_8));
+            String encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(digest);
+            return "apiguard_" + encoded.substring(0, Math.min(48, encoded.length()));
+        } catch (GeneralSecurityException e) {
+            throw new PaymentException("결제 고객 식별자 생성 중 오류가 발생했습니다.");
         }
     }
 }

@@ -73,7 +73,15 @@ class PaymentControllerTest {
     void preparePayment_returnsApiResponse() throws Exception {
         givenAuthenticatedUser();
         given(paymentService.preparePayment(1L))
-            .willReturn(new PreparePaymentResponse("order-1", 19_900L, "ApiGuard PRO 플랜 (1개월)", "client-key"));
+            .willReturn(new PreparePaymentResponse(
+                "order-1",
+                19_900L,
+                "ApiGuard PRO 플랜 (1개월)",
+                "client-key",
+                "apiguard_mock_customer_1",
+                "owner@example.com",
+                "Owner"
+            ));
 
         mockMvc.perform(post("/api/workspaces/1/payment/prepare")
                 .with(csrf())
@@ -82,7 +90,10 @@ class PaymentControllerTest {
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.orderId").value("order-1"))
             .andExpect(jsonPath("$.data.amount").value(19900))
-            .andExpect(jsonPath("$.data.clientKey").value("client-key"));
+            .andExpect(jsonPath("$.data.clientKey").value("client-key"))
+            .andExpect(jsonPath("$.data.customerKey").value("apiguard_mock_customer_1"))
+            .andExpect(jsonPath("$.data.customerEmail").value("owner@example.com"))
+            .andExpect(jsonPath("$.data.customerName").value("Owner"));
     }
 
     @Test
