@@ -36,9 +36,11 @@ ApiGuard라는 이름은 API 운영 안정성을 지킨다는 의미입니다. �
 - Redis 쿨다운 기반 중복 알림 방지 및 알림 발송 이력 저장
 - OpenAPI snapshot 저장, breaking change 감지, 스펙 소스 수정/비활성화 관리
 - 공개 Status Page 생성 및 공개 엔드포인트 선택
+- WebSocket(STOMP+SockJS) 기반 실시간 헬스체크 결과 브로드캐스트
 - 워크스페이스 멤버 초대 시 역할 지정
 - JWT 인증/인가 및 공통 응답 포맷 표준화
 - FREE/PRO 플랜별 기능 제한 정책 적용 및 PRO 구독 해지
+- 토스페이먼츠 v2 결제창 연동 (customerKey HMAC, 승인 멱등 처리)
 
 ## 동작 흐름
 
@@ -49,6 +51,7 @@ ApiGuard라는 이름은 API 운영 안정성을 지킨다는 의미입니다. �
 5. 알림 발송 결과를 저장하고, 성공한 동일 알림은 Redis 쿨다운으로 중복 발송을 억제합니다.
 6. OpenAPI 스펙 소스는 snapshot을 저장하고 이전 버전과 비교해 breaking change를 기록합니다.
 7. 공개 Status Page는 선택된 활성 엔드포인트만 외부에 노출합니다.
+8. 체크 결과 및 Incident 상태 변화는 WebSocket 토픽으로 실시간 브로드캐스트되어 대시보드/상태 페이지에 즉시 반영됩니다.
 
 ## Key Scenarios
 
@@ -177,6 +180,8 @@ sequenceDiagram
 - **Public Status Page**: 워크스페이스별 공개 페이지를 만들고 외부에 노출할 엔드포인트를 선택해 상태 요약을 제공합니다.
 - **Outbound URL Guard**: 헬스체크, OpenAPI fetch, Slack/Webhook 발송 URL은 `http/https`만 허용하고 운영 기본값으로 private network/metadata endpoint를 차단합니다.
 - **Policy-Driven Subscription**: 플랜 제한은 정책 객체(`PlanLimitPolicy`)로 분리해 기능 확장 시 변경 범위를 최소화하며, PRO 구독 해지는 결제 기간 종료 시점으로 예약합니다.
+- **Realtime Broadcast**: STOMP+SockJS 위에 JWT 인증 인터셉터를 두고, 체크 결과·Incident 상태 변화를 워크스페이스 단위 토픽으로 브로드캐스트합니다.
+- **Idempotent Payment**: Toss Payments v2 결제창 호출에 필요한 `customerKey`를 HMAC으로 발급하고, 동일 `paymentKey` 재호출 시 멱등하게 승인 결과를 반환해 콜백 중복 호출에 견디도록 처리합니다.
 
 ## 도메인 구성
 
@@ -190,7 +195,8 @@ sequenceDiagram
 - `alert`: 실패 기반 알림 정책 및 채널 관리
 - `apispec`: OpenAPI snapshot, diff, breaking change 관리
 - `statuspage`: 공개 상태 페이지와 공개 엔드포인트 선택 관리
-- `subscription/payment`: 플랜 제약 및 결제 상태 관리
+- `subscription/payment`: 플랜 제약 및 결제 상태 관리, Toss Payments v2 결제창 연동(customerKey 발급 + 승인 멱등성)
+- `admin`: 시스템 관리자 회원/공지 관리
 
 ## 플랜 정책
 
