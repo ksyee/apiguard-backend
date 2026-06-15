@@ -22,7 +22,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class HttpCheckerService {
 
-    private final RestTemplate restTemplate;
+    private final RestTemplate checkRestTemplate;
     private final OutboundUrlGuard outboundUrlGuard;
 
     public CheckResult check(Endpoint endpoint) {
@@ -44,7 +44,7 @@ public class HttpCheckerService {
 
         try {
             URI uri = outboundUrlGuard.validateHttpUrl(endpoint.getUrl(), "엔드포인트 URL");
-            ResponseEntity<String> response = restTemplate.exchange(
+            ResponseEntity<String> response = checkRestTemplate.exchange(
                 uri,
                 org.springframework.http.HttpMethod.valueOf(endpoint.getHttpMethod().name()),
                 httpEntity,
