@@ -119,6 +119,7 @@ class HttpCheckerServiceTest {
         // then
         assertThat(result.getStatus()).isEqualTo(CheckStatus.FAILURE);
         assertThat(result.getStatusCode()).isEqualTo(500);
+        assertThat(result.getErrorMessage()).isEqualTo("Error");
     }
 
     @Test

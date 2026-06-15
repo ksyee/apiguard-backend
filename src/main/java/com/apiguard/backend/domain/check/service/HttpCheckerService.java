@@ -22,6 +22,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class HttpCheckerService {
 
+    private static final int MAX_BODY_LENGTH = 1000;
+
     private final RestTemplate checkRestTemplate;
     private final OutboundUrlGuard outboundUrlGuard;
 
@@ -53,14 +55,16 @@ public class HttpCheckerService {
 
             long responseTimeMs = (System.nanoTime() - startTime) / 1_000_000;
             int statusCode = response.getStatusCode().value();
-            CheckStatus status = (statusCode == endpoint.getExpectedStatusCode())
-                ? CheckStatus.SUCCESS : CheckStatus.FAILURE;
+            boolean matched = statusCode == endpoint.getExpectedStatusCode();
+            CheckStatus status = matched ? CheckStatus.SUCCESS : CheckStatus.FAILURE;
 
             return CheckResult.builder()
                 .endpoint(endpoint)
                 .status(status)
                 .statusCode(statusCode)
                 .responseTimeMs(responseTimeMs)
+                // 응답은 받았으나 기대와 다른 경우(FAILURE), 대상이 반환한 본문을 사유로 기록한다.
+                .errorMessage(matched ? null : truncateBody(response.getBody()))
                 .checkedAt(LocalDateTime.now())
                 .build();
 
@@ -88,6 +92,16 @@ public class HttpCheckerService {
                 .checkedAt(LocalDateTime.now())
                 .build();
         }
+    }
+
+    private String truncateBody(String body) {
+        if (body == null || body.isBlank()) {
+            return null;
+        }
+        String trimmed = body.strip();
+        return trimmed.length() <= MAX_BODY_LENGTH
+            ? trimmed
+            : trimmed.substring(0, MAX_BODY_LENGTH) + "…";
     }
 
     private HttpHeaders buildHeaders(Map<String, String> headerMap) {
