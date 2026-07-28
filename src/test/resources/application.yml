@@ -26,14 +26,14 @@ spring:
             enable: false
 
 jwt:
-  secret: **REMOVED-FROM-HISTORY**
+  secret: test-only-jwt-secret-for-unit-tests-0123456789abcdefghijklmnopqrstuv
   access-expiration: 3600000
   refresh-expiration: 1209600000
 
 toss:
   payments:
-    secret-key: **REMOVED-FROM-HISTORY**
-    client-key: **REMOVED-FROM-HISTORY**
+    secret-key: test_sk_dummy_not_a_real_key
+    client-key: test_ck_dummy_not_a_real_key
 
 apiguard:
   outbound:
