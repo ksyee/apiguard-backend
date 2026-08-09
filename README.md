@@ -180,7 +180,7 @@ sequenceDiagram
 - **Public Status Page**: 워크스페이스별 공개 페이지를 만들고 외부에 노출할 엔드포인트를 선택해 상태 요약을 제공합니다.
 - **Outbound URL Guard**: 헬스체크, OpenAPI fetch, Slack/Webhook 발송 URL은 `http/https`만 허용하고 운영 기본값으로 private network/metadata endpoint를 차단합니다.
 - **Policy-Driven Subscription**: 플랜 제한은 정책 객체(`PlanLimitPolicy`)로 분리해 기능 확장 시 변경 범위를 최소화하며, PRO 구독 해지는 결제 기간 종료 시점으로 예약합니다.
-- **Realtime Broadcast**: STOMP+SockJS 위에 JWT 인증 인터셉터를 두고, 체크 결과·Incident 상태 변화를 워크스페이스 단위 토픽으로 브로드캐스트합니다.
+- **Realtime Broadcast**: STOMP+SockJS 위에 JWT 인증·구독 인가 인터셉터를 두고, 체크 결과를 엔드포인트/프로젝트 단위 토픽(`/topic/endpoints/{id}/checks`, `/topic/projects/{id}/checks`)으로 발행합니다. 구독 시 해당 프로젝트의 워크스페이스 멤버십(개인 프로젝트는 소유자 여부)을 검증합니다.
 - **Idempotent Payment**: Toss Payments v2 결제창 호출에 필요한 `customerKey`를 HMAC으로 발급하고, 동일 `paymentKey` 재호출 시 멱등하게 승인 결과를 반환해 콜백 중복 호출에 견디도록 처리합니다.
 
 ## 도메인 구성
